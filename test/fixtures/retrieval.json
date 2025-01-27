@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "state": {
+    "banners": {
+      "rules": {"entries": [
+        {"id": "aa0001", "content": "Authentication uses JWT.\nValidate audience and issuer.", "status": "pinned", "created": "2026-01-01T00:00:00Z"},
+        {"id": "aa0002", "content": "Use parameterized SQL queries.", "status": "active", "created": "2026-02-01T00:00:00Z"},
+        {"id": "aa0003", "content": "JWT legacy migration notes", "status": "archived", "created": "2026-01-01T00:00:00Z"}
+      ]},
+      "testing": {"entries": [
+        {"id": "bb0001", "content": "Run JWT integration tests before release.", "status": "active", "created": "2026-03-01T00:00:00Z"},
+        {"id": "bb0002", "content": "Historical SQL benchmark", "status": "ambient", "created": "2026-01-01T00:00:00Z"}
+      ]}
+    }
+  },
+  "cases": [
+    {"name": "keyword across banners", "query": "JWT", "expected": ["aa0001", "bb0001"]},
+    {"name": "case insensitive", "query": "jwt", "expected": ["aa0001", "bb0001"]},
+    {"name": "banner scope", "query": "JWT", "banner": "rules", "expected": ["aa0001"]},
+    {"name": "date scope", "query": "JWT", "since": "2026-02-01T00:00:00Z", "expected": ["bb0001"]},
+    {"name": "hidden ambient", "query": "SQL", "expected": ["aa0002"]},
+    {"name": "explicit ambient", "query": "SQL", "includeAmbient": true, "expected": ["aa0002", "bb0002"]},
+    {"name": "no match", "query": "kubernetes", "expected": []},
+    {"name": "full multiline match", "query": "audience", "expected": ["aa0001"]}
+  ]
+}
