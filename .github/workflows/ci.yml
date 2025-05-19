@@ -24,6 +24,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: node scripts/evaluate-retrieval.js
       - name: Smoke test packed CLI
         shell: bash
         run: |
