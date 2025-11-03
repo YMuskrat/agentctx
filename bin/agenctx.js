@@ -24,6 +24,8 @@ Core commands:
   dump [target]            Generate agent guides (openai/claude/cursor/all)
   dump [target] --check    Check generated sections without changing files
   sync                     Re-scan project for package/env changes
+  export context           Print a versioned JSON context snapshot
+  export validate <file>   Validate an export without importing it
 
 Lifecycle:
   lifecycle [--all]        Inspect policy, states, decay, and archive
@@ -240,6 +242,10 @@ async function main() {
       case 'search': {
         const { search } = require('../lib/commands/search');
         await search(args);
+        break;
+      }
+      case 'export': {
+        require('../lib/commands/export').exportCommand(args);
         break;
       }
       case 'session': {
