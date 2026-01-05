@@ -25,6 +25,7 @@ Core commands:
   dump [target] --check    Check generated sections without changing files
   sync                     Re-scan project for package/env changes
   export context           Print a versioned JSON context snapshot
+  export receipt <hash>    Print a verified sealed receipt as JSON
   export validate <file>   Validate an export without importing it
 
 Lifecycle:

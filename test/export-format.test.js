@@ -3,6 +3,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { contextExport, encode, decode } = require('../lib/export-format');
 const fixture = require('./fixtures/retrieval.json');
+const { receiptHash } = require('../lib/commands/session');
+
+test('receipt exports verify original content hash and retain event order', () => {
+  const data = { version: 1, id: 's-test', parent: null, actor: 'agent', description: 'test',
+    started: '2026-01-01T00:00:00Z', ended: '2026-01-01T00:01:00Z', duration: 60,
+    served: [{ sequence: 1, entries: [] }, { sequence: 2, entries: [] }] };
+  data.hash = receiptHash(data);
+  const envelope = { format: 'agenctx-export', version: 1, kind: 'receipt', data };
+  assert.deepEqual(decode(encode(envelope)), envelope);
+  data.served.reverse();
+  assert.throws(() => encode(envelope), /hash verification/);
+  delete data.hash;
+  assert.throws(() => encode(envelope), /hash verification/);
+});
 
 test('context export round trip preserves statuses and Unicode without aliasing', () => {
   const state = JSON.parse(JSON.stringify(fixture.state));
