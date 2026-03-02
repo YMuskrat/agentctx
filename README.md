@@ -6,6 +6,9 @@ Context management for AI coding agents. [agenctx.com](https://agenctx.com)
 
 ## What is agenctx?
 
+For integrations, see [versioned context and receipt exports](docs/export-format.md).
+For search regression checks, see [retrieval evaluation](docs/retrieval-evaluation.md).
+
 `agenctx` is a local, version-controlled context management system for AI agents. It gives each repository a shared memory for the rules, decisions, warnings, test requirements, design patterns, security constraints, and other knowledge an agent needs to work safely.
 
 Humans maintain that knowledge inside `.agenctx/`. Agents discover it through a small generated guide, search the relevant context channel, inspect previews, and open the exact entries they need before acting. The complete store is not copied into every prompt.

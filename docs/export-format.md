@@ -1,5 +1,25 @@
 # Versioned exports
 
+From an initialized repository:
+
+```sh
+agenctx export context > context-export.json
+agenctx export receipt <receipt-hash> > receipt-export.json
+agenctx export validate context-export.json
+```
+
+In Windows PowerShell 5, save the UTF-8 output explicitly:
+
+```powershell
+agenctx export context | Set-Content -Encoding UTF8 context-export.json
+```
+
+Validation accepts a UTF-8 BOM and works outside an initialized repository.
+The export commands write only JSON to stdout; errors go to stderr with nonzero
+exit status. Receipt selectors must identify exactly one sealed receipt.
+The source-checkout consumer `node examples/read-export.js context-export.json`
+demonstrates reading either kind without parsing terminal display output.
+
 The export envelope uses `format: "agenctx-export"`, `version: 1`, a `kind`
 (`context` or `receipt`), and a `data` object. Unknown envelope versions and kinds
 must be rejected rather than interpreted as the current format. New optional
