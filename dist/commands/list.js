@@ -26,13 +26,13 @@ export function listCommand() {
         chalk.bold(pad("CONTENT", COL_CONTENT)) +
         "  " +
         chalk.bold("DATE");
-    const divider = "─".repeat(COL_ID) +
+    const divider = "-".repeat(COL_ID) +
         "  " +
-        "─".repeat(COL_TYPE) +
+        "-".repeat(COL_TYPE) +
         "  " +
-        "─".repeat(COL_CONTENT) +
+        "-".repeat(COL_CONTENT) +
         "  " +
-        "─".repeat(COL_DATE);
+        "-".repeat(COL_DATE);
     console.log(header);
     console.log(chalk.dim(divider));
     for (const entry of entries) {

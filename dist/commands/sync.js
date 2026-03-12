@@ -14,7 +14,7 @@ export async function syncCommand() {
     const existingContents = new Set(store.entries.map((e) => e.content.toLowerCase()));
     const newSuggestions = suggestions.filter((s) => !existingContents.has(s.content.toLowerCase()));
     if (newSuggestions.length === 0) {
-        console.log(chalk.yellow("No new suggestions — everything is already tracked."));
+        console.log(chalk.yellow("No new suggestions; everything is already tracked."));
         store.lastSync = new Date().toISOString();
         writeContext(store);
         return;

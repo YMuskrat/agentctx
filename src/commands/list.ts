@@ -34,13 +34,13 @@ export function listCommand(): void {
     chalk.bold("DATE");
 
   const divider =
-    "─".repeat(COL_ID) +
+    "-".repeat(COL_ID) +
     "  " +
-    "─".repeat(COL_TYPE) +
+    "-".repeat(COL_TYPE) +
     "  " +
-    "─".repeat(COL_CONTENT) +
+    "-".repeat(COL_CONTENT) +
     "  " +
-    "─".repeat(COL_DATE);
+    "-".repeat(COL_DATE);
 
   console.log(header);
   console.log(chalk.dim(divider));

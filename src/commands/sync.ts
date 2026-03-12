@@ -25,7 +25,7 @@ export async function syncCommand(): Promise<void> {
   );
 
   if (newSuggestions.length === 0) {
-    console.log(chalk.yellow("No new suggestions — everything is already tracked."));
+    console.log(chalk.yellow("No new suggestions; everything is already tracked."));
     store.lastSync = new Date().toISOString();
     writeContext(store);
     return;
