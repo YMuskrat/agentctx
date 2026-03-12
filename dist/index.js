@@ -18,6 +18,12 @@ function handleError(err) {
     }
     process.exit(1);
 }
+function collectList(value, previous) {
+    return previous.concat(value
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0));
+}
 const program = new Command();
 program
     .name("agentctx")
@@ -99,10 +105,13 @@ program
 });
 program
     .command("dump")
-    .description("Output context as formatted markdown")
+    .description("Output context as agent instructions")
     .option("--copy", "Copy output to clipboard")
     .option("--out <file>", "Write output to a file")
-    .option("--all", "Write to all detected AI tool config files")
+    .option("--target <file>", "Write output to an additional custom instruction file", collectList, [])
+    .option("--agent <name>", "Write to a supported agent target (repeat or comma-separate)", collectList, [])
+    .option("--all", "Write to all detected agent instruction files")
+    .option("--list-agents", "List supported agents and their default output files")
     .action(async (options) => {
     try {
         await dumpCommand(options);
