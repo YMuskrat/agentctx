@@ -39,7 +39,9 @@ agenctx search SQLite
 
 ## See it in action
 
-![A short terminal demonstration of the agenctx workflow](./assets/agenctx-demo.gif)
+Follow a real project from initialization to agent-ready instructions in six steps:
+
+![A guided terminal walkthrough covering agenctx init, add, view, banner drill-down, and dump](./assets/agenctx-demo.gif)
 
 ## How context is organized
 
