@@ -93,16 +93,16 @@ Run `agenctx --help` for the complete command reference.
 
 ## Agent instruction files
 
-`agenctx dump` maintains marked sections in common agent instruction files without replacing the rest of their content:
+`agenctx dump` creates three concise agent guides without replacing the rest of their content:
 
 ```sh
-agenctx dump agents.md
-agenctx dump claude
-agenctx dump cursor
-agenctx dump all
+agenctx dump          # AGENTS.md, CLAUDE.md, and .cursorrules
+agenctx dump openai   # AGENTS.md (OpenAI Codex)
+agenctx dump claude   # CLAUDE.md
+agenctx dump cursor   # .cursorrules
 ```
 
-Use `agenctx dump all --check` in CI or install the optional check-only Git hook:
+Each file tells the agent how to start a session, inspect context, save useful knowledge, and end the session. Use `agenctx dump --check` in CI or install the optional check-only Git hook:
 
 ```sh
 agenctx init --hook

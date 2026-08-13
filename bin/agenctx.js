@@ -13,7 +13,7 @@ Core commands:
   view                     Show project, pinned context, and every context type
   view <banner>            Show pinned and other entries in one context type
   edit <id>                Edit an existing entry
-  dump [target]            Update managed sections (readme/agents.md/claude/cursor/all)
+  dump [target]            Generate agent guides (openai/claude/cursor/all)
   dump [target] --check    Check generated sections without changing files
   sync                     Re-scan project for package/env changes
 
@@ -63,7 +63,7 @@ Examples:
   agenctx add decision -m "chose JWT over sessions — stateless"
   agenctx view
   agenctx view warnings
-  agenctx dump all
+  agenctx dump
   agenctx pin abc123
   agenctx audit --session=latest
 `.trim();

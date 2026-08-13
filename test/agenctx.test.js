@@ -69,17 +69,39 @@ test('search accepts filters after the query', () => {
 test('dump preserves user-authored documentation and is idempotent', () => {
   const root = tempProject();
   assert.equal(run(root, 'init').status, 0);
-  const readme = path.join(root, 'README.md');
-  fs.writeFileSync(readme, '# My project\n\nKeep this text.\n', 'utf8');
+  const agents = path.join(root, 'AGENTS.md');
+  fs.writeFileSync(agents, '# My project\n\nKeep this text.\n', 'utf8');
 
-  assert.equal(run(root, 'dump', 'readme').status, 0);
-  const first = fs.readFileSync(readme, 'utf8');
+  assert.equal(run(root, 'dump', 'openai').status, 0);
+  const first = fs.readFileSync(agents, 'utf8');
   assert.match(first, /Keep this text\./);
   assert.match(first, /<!-- agenctx:start -->/);
 
-  assert.equal(run(root, 'dump', 'readme').status, 0);
-  assert.equal(fs.readFileSync(readme, 'utf8'), first);
-  assert.equal(run(root, 'dump', 'readme', '--check').status, 0);
+  assert.equal(run(root, 'dump', 'openai').status, 0);
+  assert.equal(fs.readFileSync(agents, 'utf8'), first);
+  assert.equal(run(root, 'dump', 'openai', '--check').status, 0);
+});
+
+test('dump creates exactly three concise agent instruction files', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+
+  const result = run(root, 'dump');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(run(root, 'dump', 'readme').status, 1);
+  assert.deepEqual(
+    fs.readdirSync(root).filter(file => ['AGENTS.md', 'CLAUDE.md', '.cursorrules'].includes(file)).sort(),
+    ['.cursorrules', 'AGENTS.md', 'CLAUDE.md']
+  );
+  assert.equal(fs.existsSync(path.join(root, 'README.md')), false);
+
+  for (const file of ['AGENTS.md', 'CLAUDE.md', '.cursorrules']) {
+    const content = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.match(content, /agenctx session start/);
+    assert.match(content, /agenctx view/);
+    assert.match(content, /agenctx add decision/);
+    assert.match(content, /agenctx session end/);
+  }
 });
 
 test('sync removes stale generated context and saves stack-only changes', () => {
@@ -141,7 +163,7 @@ test('optional Git hook checks generated files without staging them', () => {
   const initialized = run(root, 'init', '--hook');
   assert.equal(initialized.status, 0, initialized.stderr);
   const hook = fs.readFileSync(path.join(root, '.git', 'hooks', 'pre-commit'), 'utf8');
-  assert.match(hook, /agenctx dump all --check/);
+  assert.match(hook, /agenctx dump --check/);
   assert.doesNotMatch(hook, /git add/);
 });
 
