@@ -60,7 +60,14 @@ Follow a real project from initialization to agent-ready instructions in six ste
 
 Entries begin as active. Older, rarely read entries decay to ambient and can later be archived. Important entries can be pinned so they remain visible.
 
-`agenctx view` is the project directory: it shows the project description, globally pinned context, and every context type with its entry count and open command. `agenctx view warnings` (or any other type) then separates pinned entries from the other active entries.
+`agenctx view` is the project directory: it shows the project description, globally pinned context, and every context type with its purpose, entry count, and open command. `agenctx view warnings` (or any other type) then separates pinned entries from the other active entries.
+
+Repositories can define their own context types without changing the generated agent guides:
+
+```sh
+agenctx banner add must-see --description="Mandatory context before making changes"
+agenctx add must-see "Authentication tokens must rotate atomically"
+```
 
 ## Useful commands
 
@@ -79,11 +86,15 @@ agenctx archive <id>
 agenctx restore <id>
 agenctx revert <id>
 
-# Track agent sessions and reads
-agenctx session start "task description"
-agenctx view <id> --agent
-agenctx session end
-agenctx audit
+# Track exactly what agenctx serves during an agent interaction
+agenctx --agent start "task description"
+agenctx view
+agenctx view <type>
+agenctx view <id>
+agenctx search "keyword" --banner=<type>
+agenctx --agent end
+agenctx status
+agenctx session show <receipt-hash>
 
 # Refresh detected packages, stack, and environment variables
 agenctx sync
@@ -102,7 +113,11 @@ agenctx dump claude   # CLAUDE.md
 agenctx dump cursor   # .cursorrules
 ```
 
-Each file tells the agent how to start a session, inspect context, save useful knowledge, and end the session. Use `agenctx dump --check` in CI or install the optional check-only Git hook:
+These files are deterministic, read-only navigation guides. They never contain repository rules, warnings, custom types, counts, or session data. Agents discover that dynamic information through `agenctx view` and `agenctx search`.
+
+When an agent interaction ends, agenctx writes a content-addressed, hash-chained receipt under `.agenctx/sessions/`. It records each response served in sequence, including entry content hashes, and makes later edits detectable. Use `agenctx status` to list recent receipt hashes and `agenctx session show <hash>` to inspect one.
+
+Use `agenctx dump --check` in CI or install the optional check-only Git hook:
 
 ```sh
 agenctx init --hook

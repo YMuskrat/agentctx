@@ -97,11 +97,77 @@ test('dump creates exactly three concise agent instruction files', () => {
 
   for (const file of ['AGENTS.md', 'CLAUDE.md', '.cursorrules']) {
     const content = fs.readFileSync(path.join(root, file), 'utf8');
-    assert.match(content, /agenctx session start/);
+    assert.match(content, /agenctx --agent start/);
     assert.match(content, /agenctx view/);
-    assert.match(content, /agenctx add decision/);
-    assert.match(content, /agenctx session end/);
+    assert.match(content, /agenctx view <type>/);
+    assert.match(content, /agenctx search "<keyword>"/);
+    assert.match(content, /agenctx --agent end/);
+    assert.doesNotMatch(content, /agenctx add/);
+    assert.doesNotMatch(content, /agenctx view warnings/);
   }
+
+  const beforeContextChanges = Object.fromEntries(
+    ['AGENTS.md', 'CLAUDE.md', '.cursorrules'].map(file => [file, fs.readFileSync(path.join(root, file), 'utf8')])
+  );
+  assert.equal(run(root, 'banner', 'add', 'must-see', '--description=Mandatory project context').status, 0);
+  assert.equal(run(root, 'add', 'must-see', '--pin', 'Repository-specific information').status, 0);
+  assert.equal(run(root, 'dump').status, 0);
+  for (const [file, content] of Object.entries(beforeContextChanges)) {
+    assert.equal(fs.readFileSync(path.join(root, file), 'utf8'), content);
+  }
+});
+
+test('agent sessions seal ordered served context in hash-chained receipts', () => {
+  const root = tempProject({ name: 'receipt-test', description: 'Session receipt demo' });
+  assert.equal(run(root, 'init').status, 0);
+  assert.equal(run(root, 'banner', 'add', 'must-see', '--description=Mandatory context before changes').status, 0);
+  const added = run(root, 'add', 'must-see', '--pin', 'Rotate authentication tokens atomically');
+  assert.equal(added.status, 0, added.stderr);
+  const id = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(id, added.stdout);
+
+  assert.equal(run(root, '--agent', 'start', 'Fix token rotation').status, 0);
+  assert.equal(run(root, 'view').status, 0);
+  assert.equal(run(root, 'view', 'must-see').status, 0);
+  assert.equal(run(root, 'search', 'authentication').status, 0);
+  assert.equal(run(root, 'view', id).status, 0);
+  const ended = run(root, '--agent', 'end');
+  assert.equal(ended.status, 0, ended.stderr);
+
+  const sessionsDir = path.join(root, '.agenctx', 'sessions');
+  const receiptFiles = fs.readdirSync(sessionsDir);
+  assert.equal(receiptFiles.length, 1);
+  const receipt = JSON.parse(fs.readFileSync(path.join(sessionsDir, receiptFiles[0]), 'utf8'));
+  assert.equal(receiptFiles[0], `${receipt.hash}.json`);
+  assert.equal(receipt.actor, 'agent');
+  assert.equal(receipt.parent, null);
+  assert.deepEqual(receipt.served.map(event => event.command), [
+    'view',
+    'view must-see',
+    'search "authentication"',
+    `view ${id}`,
+  ]);
+  assert.equal(receipt.served[0].entries[0].mode, 'preview');
+  assert.equal(receipt.served[3].entries[0].mode, 'full');
+  assert.equal(receipt.served[3].entries[0].content, 'Rotate authentication tokens atomically');
+  assert.match(receipt.served[3].entries[0].content_hash, /^[0-9a-f]{64}$/);
+
+  const status = run(root, 'status');
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, new RegExp(receipt.hash.slice(0, 12)));
+  const shown = run(root, 'session', 'show', receipt.hash.slice(0, 12));
+  assert.equal(shown.status, 0, shown.stderr);
+  assert.match(shown.stdout, /Integrity:\s+valid/);
+  assert.match(shown.stdout, /01\s+view\s+overview/);
+  assert.match(shown.stdout, /04\s+view [0-9a-f]{6}\s+entry/);
+
+  assert.equal(run(root, '--agent', 'start', 'Second interaction').status, 0);
+  assert.equal(run(root, 'view', 'must-see').status, 0);
+  assert.equal(run(root, '--agent', 'end').status, 0);
+  const receipts = fs.readdirSync(sessionsDir)
+    .map(file => JSON.parse(fs.readFileSync(path.join(sessionsDir, file), 'utf8')));
+  const second = receipts.find(item => item.hash !== receipt.hash);
+  assert.equal(second.parent, receipt.hash);
 });
 
 test('sync removes stale generated context and saves stack-only changes', () => {
@@ -179,14 +245,29 @@ test('view is a complete context directory and banners separate pinned entries',
   assert.equal(overview.status, 0, overview.stderr);
   assert.match(overview.stdout, /checkout-api\s+Example service/);
   assert.match(overview.stdout, /Pinned context \(1\)/);
-  assert.match(overview.stdout, /warnings\s+2\s+1\s+agenctx view warnings/);
-  assert.match(overview.stdout, /decisions\s+1\s+0\s+agenctx view decisions/);
-  assert.match(overview.stdout, /notes\s+0\s+0\s+agenctx view notes/);
-  assert.match(overview.stdout, /blockers\s+0\s+0\s+agenctx view blockers/);
+  assert.match(overview.stdout, /warnings\s+2\s+1\s+Critical gotchas[\s\S]*agenctx view warnings/);
+  assert.match(overview.stdout, /decisions\s+1\s+0\s+Architectural choices[\s\S]*agenctx view decisions/);
+  assert.match(overview.stdout, /notes\s+0\s+0\s+Useful implementation[\s\S]*agenctx view notes/);
+  assert.match(overview.stdout, /blockers\s+0\s+0\s+Known constraints[\s\S]*agenctx view blockers/);
 
   const warnings = run(root, 'view', 'warnings');
   assert.equal(warnings.status, 0, warnings.stderr);
   assert.match(warnings.stdout, /Pinned \(1\)[\s\S]*Never edit generated API files/);
   assert.match(warnings.stdout, /Other entries \(1\)[\s\S]*Another active warning/);
   assert.match(warnings.stdout, /Back to all types:\s+agenctx view/);
+});
+
+test('custom context types are discoverable with their descriptions', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  assert.equal(run(root, 'banner', 'add', 'must-see', '--description=Mandatory context before changes').status, 0);
+  assert.equal(run(root, 'add', 'must-see', 'Read this first').status, 0);
+
+  const overview = run(root, 'view');
+  assert.equal(overview.status, 0, overview.stderr);
+  assert.match(overview.stdout, /must-see\s+1\s+0\s+Mandatory context before changes/);
+  assert.match(overview.stdout, /agenctx view must-see/);
+  const banner = run(root, 'view', 'must-see');
+  assert.match(banner.stdout, /Mandatory context before changes/);
+  assert.match(banner.stdout, /Read this first/);
 });

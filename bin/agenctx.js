@@ -10,6 +10,7 @@ Usage:
 Core commands:
   init [--hook]            Initialize agenctx in the current project
   add <banner> [message]   Add entry to a banner  (-m inline, -e editor)
+  banner add <name>        Add or describe a custom context type
   view                     Show project, pinned context, and every context type
   view <banner>            Show pinned and other entries in one context type
   edit <id>                Edit an existing entry
@@ -35,10 +36,12 @@ Search:
   search "jwt" --since=1w  Combine keyword and date
 
 Sessions:
+  --agent start "question" Start a tracked agent interaction
+  --agent end              Seal its ordered served-context receipt
   session start "question" Start a session (one per user question)
   session end              Close the active session
   session list             All past sessions
-  session show <id>        Full trace — what was read, what was skipped
+  session show <id|hash>   Show the exact ordered served-context receipt
 
 Audit:
   audit                    Show recent read/write activity
@@ -63,6 +66,9 @@ Examples:
   agenctx add decision -m "chose JWT over sessions — stateless"
   agenctx view
   agenctx view warnings
+  agenctx search "authentication"
+  agenctx --agent start "fix authentication"
+  agenctx --agent end
   agenctx dump
   agenctx pin abc123
   agenctx audit --session=latest
@@ -83,6 +89,12 @@ async function main() {
   }
 
   try {
+    if (command === '--agent') {
+      const { agentSession } = require('../lib/commands/session');
+      agentSession(args);
+      return;
+    }
+
     switch (command) {
       case 'init': {
         const { init } = require('../lib/commands/init');
@@ -92,6 +104,11 @@ async function main() {
       case 'add': {
         const { add } = require('../lib/commands/add');
         await add(args);
+        break;
+      }
+      case 'banner': {
+        const { banner } = require('../lib/commands/banner');
+        banner(args);
         break;
       }
       case 'view': {
