@@ -70,6 +70,8 @@ An autonomous agent discovers and reads relevant context. Afterward, a human fin
 
 Entries begin as active. Older, rarely read entries decay to ambient and can later be archived. Important entries can be pinned so they remain visible.
 
+CLI screens use the same visual hierarchy throughout: important pinned context first, then populated context types, then empty types. Read state and full reads are labeled explicitly, and each screen ends with a short `Next` section instead of a wall of commands.
+
 `agenctx view` is the project directory: it shows the project description, globally pinned context, and every context type with its purpose, entry count, and open command. `agenctx view warnings` (or any other type) then separates pinned entries from the other active entries.
 
 Repositories can define their own context types without changing the generated agent guides:

@@ -171,9 +171,11 @@ test('agent sessions seal ordered served context in hash-chained receipts', () =
   assert.match(status.stdout, new RegExp(receipt.hash.slice(0, 12)));
   const shown = run(root, 'session', 'show', receipt.hash.slice(0, 12));
   assert.equal(shown.status, 0, shown.stderr);
-  assert.match(shown.stdout, /Integrity:\s+valid/);
-  assert.match(shown.stdout, /01\s+view\s+overview/);
-  assert.match(shown.stdout, /04\s+view [0-9a-f]{6}\s+entry/);
+  assert.match(shown.stdout, /Integrity\s+valid/);
+  assert.match(shown.stdout, /01\s+OVERVIEW\s+view/);
+  assert.match(shown.stdout, /04\s+ENTRY\s+view [0-9a-f]{6}/);
+  assert.match(shown.stdout, /PREVIEW\s+must-see/);
+  assert.match(shown.stdout, /FULL\s+must-see/);
 
   assert.equal(run(root, '--agent', 'start', 'Second interaction').status, 0);
   assert.equal(run(root, 'view', 'must-see').status, 0);
@@ -257,18 +259,19 @@ test('view is a complete context directory and banners separate pinned entries',
 
   const overview = run(root, 'view');
   assert.equal(overview.status, 0, overview.stderr);
-  assert.match(overview.stdout, /checkout-api\s+Example service/);
-  assert.match(overview.stdout, /Pinned context \(1\)/);
-  assert.match(overview.stdout, /warnings\s+2\s+1\s+Critical gotchas[\s\S]*agenctx view warnings/);
-  assert.match(overview.stdout, /decisions\s+1\s+0\s+Architectural choices[\s\S]*agenctx view decisions/);
-  assert.match(overview.stdout, /notes\s+0\s+0\s+Useful implementation[\s\S]*agenctx view notes/);
-  assert.match(overview.stdout, /blockers\s+0\s+0\s+Known constraints[\s\S]*agenctx view blockers/);
+  assert.match(overview.stdout, /checkout-api — Example service/);
+  assert.match(overview.stdout, /IMPORTANT · PINNED \(1\)/);
+  assert.match(overview.stdout, /warnings\s+2\s+1\s+Critical gotchas/);
+  assert.match(overview.stdout, /decisions\s+1\s+0\s+Architectural choices/);
+  assert.match(overview.stdout, /notes\s+0\s+0\s+Useful implementation/);
+  assert.match(overview.stdout, /blockers\s+0\s+0\s+Known constraints/);
+  assert.match(overview.stdout, /agenctx view warnings\s+·\s+open the highest-priority populated type/);
 
   const warnings = run(root, 'view', 'warnings');
   assert.equal(warnings.status, 0, warnings.stderr);
-  assert.match(warnings.stdout, /Pinned \(1\)[\s\S]*Never edit generated API files/);
-  assert.match(warnings.stdout, /Other entries \(1\)[\s\S]*Another active warning/);
-  assert.match(warnings.stdout, /Back to all types:\s+agenctx view/);
+  assert.match(warnings.stdout, /IMPORTANT · PINNED \(1\)[\s\S]*Never edit generated API files/);
+  assert.match(warnings.stdout, /OTHER CONTEXT \(1\)[\s\S]*Another active warning/);
+  assert.match(warnings.stdout, /agenctx view\s+·\s+back to all context types/);
 });
 
 test('custom context types are discoverable with their descriptions', () => {
