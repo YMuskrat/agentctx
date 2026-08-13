@@ -37,6 +37,10 @@ agenctx search SQLite
 
 `agenctx init` creates `.agenctx/`. Commit that directory so humans and agents share the same project memory.
 
+## See it in action
+
+![A short terminal demonstration of the agenctx workflow](./assets/agenctx-demo.gif)
+
 ## How context is organized
 
 | Banner | What belongs there |
