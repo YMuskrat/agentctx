@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+
+# Personal editor permissions and transient agent sessions
+.claude/settings.local.json
+.agenctx/session.json
+
