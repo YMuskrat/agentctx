@@ -174,7 +174,10 @@ test('agent sessions seal ordered served context in hash-chained receipts', () =
   assert.doesNotMatch(status.stdout, /CONTEXT HEALTH/);
   const shown = run(root, 'session', 'show', receipt.hash.slice(0, 12));
   assert.equal(shown.status, 0, shown.stderr);
-  assert.match(shown.stdout, /Integrity\s+valid/);
+  assert.match(shown.stdout, /AGENT TRACE\s+[0-9a-f]{12}\s+VALID/);
+  assert.match(shown.stdout, /Fix token rotation\s+\n\s+CONTEXT SERVED BY BANNER/);
+  assert.doesNotMatch(shown.stdout, /Receipt\s+[0-9a-f]{64}/);
+  assert.doesNotMatch(shown.stdout, /When\s+/);
   assert.match(shown.stdout, /CONTEXT SERVED BY BANNER/);
   assert.match(shown.stdout, /PROJECT OVERVIEW[\s\S]*01\s+view\s+receipt-test/);
   assert.match(shown.stdout, /MUST-SEE[\s\S]*01\s+PREVIEW\s+\[[0-9a-f]{6}\]\s+view/);

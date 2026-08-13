@@ -16,7 +16,7 @@ Run `agenctx status` to see recent receipt hashes and task names. Then open one 
 
 ![A short agenctx teaser showing how status finds an agent receipt and session show reveals its ordered traces](./assets/agenctx-teaser.gif)
 
-The trace shows exactly what agenctx fed to the agent, including whether an entry was previewed or read in full. Sequence numbers preserve the order in which it was served.
+The trace opens directly into what agenctx fed to the agent, grouped by banner. `PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order.
 
 ## Install
 
