@@ -10,7 +10,8 @@ Usage:
 Core commands:
   init [--hook]            Initialize agenctx in the current project
   add <banner> [message]   Add entry to a banner  (-m inline, -e editor)
-  view [banner]            Browse banners and entries
+  view                     Show project, pinned context, and every context type
+  view <banner>            Show pinned and other entries in one context type
   edit <id>                Edit an existing entry
   dump [target]            Update managed sections (readme/agents.md/claude/cursor/all)
   dump [target] --check    Check generated sections without changing files

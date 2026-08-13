@@ -144,3 +144,27 @@ test('optional Git hook checks generated files without staging them', () => {
   assert.match(hook, /agenctx dump all --check/);
   assert.doesNotMatch(hook, /git add/);
 });
+
+test('view is a complete context directory and banners separate pinned entries', () => {
+  const root = tempProject({ name: 'checkout-api', description: 'Example service' });
+  assert.equal(run(root, 'init').status, 0);
+  const pinned = run(root, 'add', 'warn', '--pin', 'Never edit generated API files');
+  assert.equal(pinned.status, 0, pinned.stderr);
+  assert.equal(run(root, 'add', 'warn', 'Another active warning').status, 0);
+  assert.equal(run(root, 'add', 'decision', 'Use SQLite for local state').status, 0);
+
+  const overview = run(root, 'view');
+  assert.equal(overview.status, 0, overview.stderr);
+  assert.match(overview.stdout, /checkout-api\s+Example service/);
+  assert.match(overview.stdout, /Pinned context \(1\)/);
+  assert.match(overview.stdout, /warnings\s+2\s+1\s+agenctx view warnings/);
+  assert.match(overview.stdout, /decisions\s+1\s+0\s+agenctx view decisions/);
+  assert.match(overview.stdout, /notes\s+0\s+0\s+agenctx view notes/);
+  assert.match(overview.stdout, /blockers\s+0\s+0\s+agenctx view blockers/);
+
+  const warnings = run(root, 'view', 'warnings');
+  assert.equal(warnings.status, 0, warnings.stderr);
+  assert.match(warnings.stdout, /Pinned \(1\)[\s\S]*Never edit generated API files/);
+  assert.match(warnings.stdout, /Other entries \(1\)[\s\S]*Another active warning/);
+  assert.match(warnings.stdout, /Back to all types:\s+agenctx view/);
+});

@@ -60,6 +60,8 @@ Follow a real project from initialization to agent-ready instructions in six ste
 
 Entries begin as active. Older, rarely read entries decay to ambient and can later be archived. Important entries can be pinned so they remain visible.
 
+`agenctx view` is the project directory: it shows the project description, globally pinned context, and every context type with its entry count and open command. `agenctx view warnings` (or any other type) then separates pinned entries from the other active entries.
+
 ## Useful commands
 
 ```sh
