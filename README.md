@@ -1,5 +1,7 @@
 # agenctx
 
+![A llama archivist organizing pinned context cards and version history](https://raw.githubusercontent.com/YMuskrat/agentctx/master/assets/agenctx-hero.png)
+
 Durable, auditable project context for AI coding agents.
 
 AI agents repeatedly rediscover the same project rules, decisions, and hazards. `agenctx` keeps that knowledge in a small, version-controlled store inside the repository, with lifecycle management and an audit trail.
@@ -118,4 +120,3 @@ The project deliberately uses no runtime dependencies or build step.
 ## License
 
 MIT
-
