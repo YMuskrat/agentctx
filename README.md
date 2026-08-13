@@ -1,6 +1,6 @@
 # agenctx
 
-![A llama archivist organizing pinned context cards and version history](https://raw.githubusercontent.com/YMuskrat/agentctx/master/assets/agenctx-hero.png)
+![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.png)
 
 Durable, auditable project context for AI coding agents.
 
