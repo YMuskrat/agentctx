@@ -10,13 +10,13 @@ AI agents repeatedly rediscover the same project rules, decisions, and hazards. 
 
 It is a dependency-free CLI for Node.js 18 and later.
 
-## What context was the agent served?
+## Inspect an agent trace
 
-An agent changed authentication. Instead of guessing which project decisions it encountered, open the interaction receipt and inspect every agenctx response in order:
+Run `agenctx status` to find recent agent receipt hashes. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction:
 
-![A short agenctx teaser showing an agent interaction followed by its ordered preview and full-read receipt](./assets/agenctx-teaser.gif)
+![A short agenctx teaser showing how status finds an agent receipt and session show reveals its ordered traces](./assets/agenctx-teaser.gif)
 
-The receipt proves what agenctx delivered, including whether an entry was previewed or read in full. It does not claim that the model understood or followed that context.
+The trace shows exactly what agenctx fed to the agent, including whether an entry was previewed or read in full and the order in which it was served.
 
 ## Install
 
