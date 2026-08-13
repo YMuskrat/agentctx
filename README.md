@@ -41,9 +41,9 @@ agenctx search SQLite
 
 ## See it in action
 
-Follow a real project from initialization to agent-ready instructions in six steps:
+Follow a real tracked agent interaction from session start to a verifiable receipt of exactly what agenctx served:
 
-![A guided terminal walkthrough covering agenctx init, add, view, banner drill-down, and dump](./assets/agenctx-demo.gif)
+![A guided terminal walkthrough covering agent session start, context discovery, decision reading, keyword search, receipt creation, and session replay](./assets/agenctx-demo.gif)
 
 ## How context is organized
 
