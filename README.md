@@ -4,6 +4,8 @@
 
 Durable, auditable project context for AI coding agents.
 
+> Originally built on March 12, 2026. The [first scaffold commit](https://github.com/YMuskrat/agentctx/commit/1668fe6b0eb4d2c9a8de785e954e17ef4faa1b7c) and [original prototype snapshot](https://github.com/YMuskrat/agentctx/commit/31ec2a59636ac65abb022169aeb76daf2b6cad3b) are preserved; public-release work resumed five months later on August 13, 2026.
+
 AI agents repeatedly rediscover the same project rules, decisions, and hazards. `agenctx` keeps that knowledge in a small, version-controlled store inside the repository, with lifecycle management and an audit trail.
 
 It is a dependency-free CLI for Node.js 18 and later.
