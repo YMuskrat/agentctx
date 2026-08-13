@@ -41,9 +41,9 @@ agenctx search SQLite
 
 ## See it in action
 
-Follow a real tracked agent interaction from session start to a verifiable receipt of exactly what agenctx served:
+Follow the complete workflow: a human adds and inspects project knowledge, an autonomous agent discovers and reads it, and a human audits the sealed trace afterward:
 
-![A guided terminal walkthrough covering agent session start, context discovery, decision reading, keyword search, receipt creation, and session replay](./assets/agenctx-demo.gif)
+![A guided terminal walkthrough covering human context setup, autonomous agent navigation, and auditing the agent's served-context receipt](./assets/agenctx-demo.gif)
 
 ## How context is organized
 
