@@ -66,6 +66,20 @@ test('search accepts filters after the query', () => {
   assert.match(result.stdout, /Use JWT/);
 });
 
+test('edit can update an entry non-interactively', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const added = run(root, 'add', 'decision', 'Use SQLite');
+  const id = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(id, added.stdout);
+
+  const edited = run(root, 'edit', id, '-m', 'Use SQLite with WAL mode');
+  assert.equal(edited.status, 0, edited.stderr);
+  assert.match(edited.stdout, /Updated/);
+  const viewed = run(root, 'view', id);
+  assert.match(viewed.stdout, /Use SQLite with WAL mode/);
+});
+
 test('dump preserves user-authored documentation and is idempotent', () => {
   const root = tempProject();
   assert.equal(run(root, 'init').status, 0);

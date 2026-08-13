@@ -13,7 +13,7 @@ Core commands:
   banner add <name>        Add or describe a custom context type
   view                     Show project, pinned context, and every context type
   view <banner>            Show pinned and other entries in one context type
-  edit <id>                Edit an existing entry
+  edit <id> [-m message]   Update an entry inline or in an editor
   dump [target]            Generate agent guides (openai/claude/cursor/all)
   dump [target] --check    Check generated sections without changing files
   sync                     Re-scan project for package/env changes

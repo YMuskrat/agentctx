@@ -41,9 +41,17 @@ agenctx search SQLite
 
 ## See it in action
 
-Follow the complete workflow: a human adds and inspects project knowledge, an autonomous agent discovers and reads it, and a human audits the sealed trace afterward:
+### 1. Maintain the project context
 
-![A guided terminal walkthrough covering human context setup, autonomous agent navigation, and auditing the agent's served-context receipt](./assets/agenctx-demo.gif)
+A maintainer adds knowledge, browses the available context types, updates an existing decision, and pins it for every agent:
+
+![A guided terminal walkthrough showing a human adding, viewing, updating, and pinning agenctx project knowledge](./assets/agenctx-human-demo.gif)
+
+### 2. Let an agent use it—and audit the trace
+
+An autonomous agent discovers and reads relevant context. Afterward, a human finds its receipt and verifies exactly what agenctx served in sequence:
+
+![A guided terminal walkthrough showing autonomous agent context navigation followed by a human audit of its served-context receipt](./assets/agenctx-agent-demo.gif)
 
 ## How context is organized
 
@@ -77,6 +85,7 @@ agenctx add must-see "Authentication tokens must rotate atomically"
 # Add and read context
 agenctx add <banner> "message"
 agenctx add <banner> --pin "always remember this"
+agenctx edit <id> -m "updated context"
 agenctx view [banner-or-id]
 agenctx feed
 agenctx search "keyword" --since=1w
