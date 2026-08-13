@@ -10,6 +10,14 @@ AI agents repeatedly rediscover the same project rules, decisions, and hazards. 
 
 It is a dependency-free CLI for Node.js 18 and later.
 
+## What context was the agent served?
+
+An agent changed authentication. Instead of guessing which project decisions it encountered, open the interaction receipt and inspect every agenctx response in order:
+
+![A short agenctx teaser showing an agent interaction followed by its ordered preview and full-read receipt](./assets/agenctx-teaser.gif)
+
+The receipt proves what agenctx delivered, including whether an entry was previewed or read in full. It does not claim that the model understood or followed that context.
+
 ## Install
 
 From npm, after the first public release:
