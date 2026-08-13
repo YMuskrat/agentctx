@@ -47,7 +47,7 @@ Audit:
   audit                    Show recent read/write activity
   audit --session=latest   Show last agent session
   audit <id> --detail      Show context agent had at time of entry
-  status                   Show context health and recent decay
+  status                   List agent receipt hashes and task names
 
 Banners:
   warnings   decisions   rules     testing

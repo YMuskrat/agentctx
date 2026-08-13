@@ -12,11 +12,11 @@ It is a dependency-free CLI for Node.js 18 and later.
 
 ## Inspect an agent trace
 
-Run `agenctx status` to find recent agent receipt hashes. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction:
+Run `agenctx status` to see recent receipt hashes and task names. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction, grouped by banner:
 
 ![A short agenctx teaser showing how status finds an agent receipt and session show reveals its ordered traces](./assets/agenctx-teaser.gif)
 
-The trace shows exactly what agenctx fed to the agent, including whether an entry was previewed or read in full and the order in which it was served.
+The trace shows exactly what agenctx fed to the agent, including whether an entry was previewed or read in full. Sequence numbers preserve the order in which it was served.
 
 ## Install
 
@@ -136,7 +136,7 @@ agenctx dump cursor   # .cursorrules
 
 These files are deterministic, read-only navigation guides. They never contain repository rules, warnings, custom types, counts, or session data. Agents discover that dynamic information through `agenctx view` and `agenctx search`.
 
-When an agent interaction ends, agenctx writes a content-addressed, hash-chained receipt under `.agenctx/sessions/`. It records each response served in sequence, including entry content hashes, and makes later edits detectable. Use `agenctx status` to list recent receipt hashes and `agenctx session show <hash>` to inspect one.
+When an agent interaction ends, agenctx writes a content-addressed, hash-chained receipt under `.agenctx/sessions/`. It records each response served in sequence, including entry content hashes, and makes later edits detectable. Use `agenctx status` to list receipt hashes with their task names and `agenctx session show <hash>` to inspect the served context grouped by banner.
 
 Use `agenctx dump --check` in CI or install the optional check-only Git hook:
 

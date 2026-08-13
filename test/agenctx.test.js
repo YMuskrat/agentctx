@@ -169,13 +169,17 @@ test('agent sessions seal ordered served context in hash-chained receipts', () =
   const status = run(root, 'status');
   assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, new RegExp(receipt.hash.slice(0, 12)));
+  assert.match(status.stdout, /Hash\s+Task/);
+  assert.match(status.stdout, /Fix token rotation/);
+  assert.doesNotMatch(status.stdout, /CONTEXT HEALTH/);
   const shown = run(root, 'session', 'show', receipt.hash.slice(0, 12));
   assert.equal(shown.status, 0, shown.stderr);
   assert.match(shown.stdout, /Integrity\s+valid/);
-  assert.match(shown.stdout, /01\s+OVERVIEW\s+view/);
-  assert.match(shown.stdout, /04\s+ENTRY\s+view [0-9a-f]{6}/);
-  assert.match(shown.stdout, /PREVIEW\s+must-see/);
-  assert.match(shown.stdout, /FULL\s+must-see/);
+  assert.match(shown.stdout, /CONTEXT SERVED BY BANNER/);
+  assert.match(shown.stdout, /PROJECT OVERVIEW[\s\S]*01\s+view\s+receipt-test/);
+  assert.match(shown.stdout, /MUST-SEE[\s\S]*01\s+PREVIEW\s+\[[0-9a-f]{6}\]\s+view/);
+  assert.match(shown.stdout, /03\s+PREVIEW\s+\[[0-9a-f]{6}\]\s+search "authentication"/);
+  assert.match(shown.stdout, /04\s+FULL\s+\[[0-9a-f]{6}\]\s+view [0-9a-f]{6}/);
 
   assert.equal(run(root, '--agent', 'start', 'Second interaction').status, 0);
   assert.equal(run(root, 'view', 'must-see').status, 0);
