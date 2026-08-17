@@ -1,6 +1,6 @@
 # agenctx
 
-![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.png)
+![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.jpg?v=3)
 
 Durable, auditable project context for AI coding agents.
 
@@ -45,19 +45,19 @@ agenctx search SQLite
 
 A maintainer adds knowledge, browses the available context types, updates an existing decision, and pins it for every agent:
 
-![A guided terminal walkthrough showing a human adding, viewing, updating, and pinning agenctx project knowledge](./assets/agenctx-human-demo.gif)
+![A guided terminal walkthrough showing a human adding, viewing, updating, and pinning agenctx project knowledge](./assets/agenctx-human-demo.gif?v=3)
 
 ### 2. Generate guides for coding agents
 
 `agenctx dump` creates concise static guides for OpenAI Codex, Claude, and Cursor. The guides teach agents how to navigate agenctx; project knowledge remains lifecycle-managed inside `.agenctx/`:
 
-![A terminal walkthrough showing agenctx generating AGENTS.md, CLAUDE.md, and .cursorrules as static navigation guides](./assets/agenctx-dump-demo.gif)
+![A terminal walkthrough showing agenctx generating AGENTS.md, CLAUDE.md, and .cursorrules as static navigation guides](./assets/agenctx-dump-demo.gif?v=3)
 
 ### 3. Audit an agent trace
 
 Run `agenctx status` to list every agent receipt as a hash and task name. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction:
 
-![A two-command terminal walkthrough showing agenctx status followed by session show for one agent receipt](./assets/agenctx-agent-demo.gif)
+![A two-command terminal walkthrough showing agenctx status followed by session show for one agent receipt](./assets/agenctx-agent-demo.gif?v=3)
 
 `PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served, not whether the model understood or followed it.
 
