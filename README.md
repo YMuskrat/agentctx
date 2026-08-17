@@ -10,14 +10,6 @@ AI agents repeatedly rediscover the same project rules, decisions, and hazards. 
 
 It is a dependency-free CLI for Node.js 18 and later.
 
-## Inspect an agent trace
-
-Run `agenctx status` to see recent receipt hashes and task names. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction, grouped by banner:
-
-![A short agenctx teaser showing how status finds an agent receipt and session show reveals its ordered traces](./assets/agenctx-teaser.gif)
-
-The trace opens directly into what agenctx fed to the agent, grouped by banner. `PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order.
-
 ## Install
 
 From npm, after the first public release:
@@ -55,11 +47,19 @@ A maintainer adds knowledge, browses the available context types, updates an exi
 
 ![A guided terminal walkthrough showing a human adding, viewing, updating, and pinning agenctx project knowledge](./assets/agenctx-human-demo.gif)
 
-### 2. Let an agent use it—and audit the trace
+### 2. Generate guides for coding agents
+
+`agenctx dump` creates concise static guides for OpenAI Codex, Claude, and Cursor. The guides teach agents how to navigate agenctx; project knowledge remains lifecycle-managed inside `.agenctx/`:
+
+![A terminal walkthrough showing agenctx generating AGENTS.md, CLAUDE.md, and .cursorrules as static navigation guides](./assets/agenctx-dump-demo.gif)
+
+### 3. Let an agent use it—and audit the trace
 
 An autonomous agent discovers and reads relevant context. Afterward, a human finds its receipt and verifies exactly what agenctx served in sequence:
 
 ![A guided terminal walkthrough showing autonomous agent context navigation followed by a human audit of its served-context receipt](./assets/agenctx-agent-demo.gif)
+
+`PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served—not whether the model understood or followed it.
 
 ## How context is organized
 
