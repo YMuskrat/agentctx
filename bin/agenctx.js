@@ -22,6 +22,7 @@ Core commands:
   sync                     Re-scan project for package/env changes
 
 Lifecycle:
+  lifecycle [--all]        Inspect policy, states, decay, and archive
   pin <id>                 Pin entry; always shown to agents
   unpin <id>               Unpin entry; return to normal lifecycle
   archive <id>             Archive entry; hidden from agents
@@ -148,6 +149,11 @@ async function main() {
       case 'pin': {
         const { pin } = require('../lib/commands/lifecycle');
         pin(args);
+        break;
+      }
+      case 'lifecycle': {
+        const { lifecycleReport } = require('../lib/commands/lifecycle-report');
+        lifecycleReport(args);
         break;
       }
       case 'unpin': {

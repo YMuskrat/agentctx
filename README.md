@@ -2,7 +2,7 @@
 
 ![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.jpg?v=3)
 
-Durable, auditable project context for AI coding agents.
+Durable, auditable project context for AI coding agents. [agenctx.com](https://agenctx.com)
 
 > Originally built on March 12, 2026. The [first scaffold commit](https://github.com/YMuskrat/agentctx/commit/1668fe6b0eb4d2c9a8de785e954e17ef4faa1b7c) and tagged [original prototype snapshot](https://github.com/YMuskrat/agentctx/tree/prototype-2026-03-12) are preserved; public-release work resumed five months later on August 13, 2026.
 
@@ -12,7 +12,7 @@ It is a dependency-free CLI for Node.js 18 and later.
 
 ## Install
 
-From npm, after the first public release:
+From npm:
 
 ```sh
 npm install --global agenctx
@@ -76,7 +76,9 @@ Run `agenctx status` to list every agent receipt as a hash and task name. Then o
 | `tasks` | Current work |
 | `blockers` | Known constraints |
 
-Entries begin as active. Older, rarely read entries decay to ambient and can later be archived. Important entries can be pinned so they remain visible.
+Entries begin as active. A full read refreshes an entry and adds a bounded retention bonus. Inactive entries move to ambient, where they are hidden by default but remain available for review. A full ambient read reactivates the entry; context that remains ambient through the review window moves to the retained archive. Only pinned entries are permanently protected from automatic transitions.
+
+Run `agenctx lifecycle` to see the policy, state counts, ambient review queue, retained archive, upcoming transitions, and recent lifecycle history. Use `agenctx lifecycle --all` to include every active and pinned entry. The default policy keeps unread context active for 30 days, adds 3 days per full read up to a 60-day bonus, and archives context after 60 uninterrupted days in ambient. These values are explicit and configurable under `decay` in `.agenctx/config.json`; every automatic transition is recorded in the audit history.
 
 CLI screens use the same visual hierarchy throughout: important pinned context first, then populated context types, then empty types. Read state and full reads are labeled explicitly; command discovery stays in `agenctx --help` instead of being repeated after every result.
 
@@ -101,6 +103,8 @@ agenctx feed
 agenctx search "keyword" --since=1w
 
 # Manage lifecycle
+agenctx lifecycle           # inspect policy, decay, and archive
+agenctx lifecycle --all     # include every active and pinned entry
 agenctx pin <id>
 agenctx unpin <id>
 agenctx archive <id>

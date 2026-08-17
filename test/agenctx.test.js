@@ -69,6 +69,128 @@ test('old entries spend the configured period in ambient state', () => {
   assert.equal(state.banners.notes.entries[0].status, 'ambient');
 });
 
+test('read frequency extends retention without making entries permanent', () => {
+  const now = new Date('2026-08-17T12:00:00.000Z');
+
+  function statusAfter(readCount, inactiveDays, status = 'active') {
+    const anchor = new Date(now.getTime() - inactiveDays * 86400000).toISOString();
+    const state = {
+      banners: {
+        notes: {
+          entries: [{
+            id: `${readCount}-${inactiveDays}`,
+            status,
+            content: 'retention candidate',
+            created: anchor,
+            updated: anchor,
+            last_read: anchor,
+            read_count: readCount,
+          }],
+        },
+      },
+    };
+    runDecay(state, {}, { now });
+    return state.banners.notes.entries[0].status;
+  }
+
+  assert.equal(statusAfter(0, 31), 'ambient');
+  assert.equal(statusAfter(5, 31), 'active');
+  assert.equal(statusAfter(10, 61), 'ambient');
+  assert.equal(statusAfter(20, 91), 'ambient');
+  assert.equal(statusAfter(0, 365, 'pinned'), 'pinned');
+});
+
+test('lifecycle command audits decay, reactivation, archive, and restore', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const added = run(root, 'add', 'note', 'Lifecycle test context');
+  const id = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(id, added.stdout);
+
+  const statePath = path.join(root, '.agenctx', 'state.json');
+  let state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  let entry = state.banners.notes.entries.find(item => item.id === id);
+  const old = new Date(Date.now() - 100 * 86400000).toISOString();
+  entry.created = old;
+  entry.updated = old;
+  entry.last_read = old;
+  entry.read_count = 10;
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf8');
+
+  const decayed = run(root, 'lifecycle');
+  assert.equal(decayed.status, 0, decayed.stderr);
+  assert.match(decayed.stdout, /CONTEXT LIFECYCLE/);
+  assert.match(decayed.stdout, /APPLIED NOW/);
+  assert.match(decayed.stdout, /active -> ambient/);
+
+  state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  entry = state.banners.notes.entries.find(item => item.id === id);
+  assert.equal(entry.status, 'ambient');
+
+  const viewed = run(root, 'view', id);
+  assert.equal(viewed.status, 0, viewed.stderr);
+  state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  entry = state.banners.notes.entries.find(item => item.id === id);
+  assert.equal(entry.status, 'active');
+  assert.equal(entry.decayed_at, undefined);
+
+  entry.status = 'ambient';
+  entry.decayed_at = new Date(Date.now() - 61 * 86400000).toISOString();
+  entry.updated = entry.decayed_at;
+  entry.last_read = entry.decayed_at;
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf8');
+
+  const archived = run(root, 'lifecycle');
+  assert.equal(archived.status, 0, archived.stderr);
+  assert.match(archived.stdout, /ambient -> archived/);
+  assert.match(archived.stdout, /ARCHIVE \(1\)/);
+
+  assert.equal(run(root, '--agent', 'start', 'Read archived context').status, 0);
+  const agentRead = run(root, 'view', id);
+  assert.equal(agentRead.status, 1);
+  assert.match(agentRead.stderr, /Archived context is not served to agents/);
+  assert.equal(run(root, '--agent', 'end').status, 0);
+
+  assert.equal(run(root, 'restore', id).status, 0);
+  assert.equal(run(root, 'lifecycle').status, 0);
+  state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  entry = state.banners.notes.entries.find(item => item.id === id);
+  assert.equal(entry.status, 'active');
+
+  const history = fs.readdirSync(path.join(root, '.agenctx', 'history'))
+    .sort()
+    .map(file => JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'history', file), 'utf8')));
+  assert.ok(history.some(event => event.action === 'decay' && event.entry?.id === id));
+  assert.ok(history.some(event => event.action === 'reactivate' && event.entry?.id === id));
+  assert.ok(history.some(event => event.action === 'auto_archive' && event.entry?.id === id));
+  assert.ok(history.some(event => event.action === 'restore' && event.entry?.id === id));
+});
+
+test('search applies lifecycle before serving context', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const added = run(root, 'add', 'warning', 'Expired searchable warning');
+  const id = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(id, added.stdout);
+
+  const statePath = path.join(root, '.agenctx', 'state.json');
+  const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  const entry = state.banners.warnings.entries.find(item => item.id === id);
+  const old = new Date(Date.now() - 31 * 86400000).toISOString();
+  entry.created = old;
+  entry.updated = old;
+  entry.last_read = null;
+  entry.read_count = 0;
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf8');
+
+  const result = run(root, 'search', 'Expired searchable');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /No matching context/);
+
+  const updated = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  assert.equal(updated.banners.warnings.entries.find(item => item.id === id).status, 'ambient');
+});
+
 test('search accepts filters after the query', () => {
   const root = tempProject();
   assert.equal(run(root, 'init').status, 0);
