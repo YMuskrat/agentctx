@@ -53,11 +53,11 @@ A maintainer adds knowledge, browses the available context types, updates an exi
 
 ![A terminal walkthrough showing agenctx generating AGENTS.md, CLAUDE.md, and .cursorrules as static navigation guides](./assets/agenctx-dump-demo.gif)
 
-### 3. Let an agent use it—and audit the trace
+### 3. Audit an agent trace
 
-An autonomous agent discovers and reads relevant context. Afterward, a human finds its receipt and verifies exactly what agenctx served in sequence:
+Run `agenctx status` to list every agent receipt as a hash and task name. Then open one with `agenctx session show <hash>` to see every context response agenctx served during that interaction:
 
-![A guided terminal walkthrough showing autonomous agent context navigation followed by a human audit of its served-context receipt](./assets/agenctx-agent-demo.gif)
+![A two-command terminal walkthrough showing agenctx status followed by session show for one agent receipt](./assets/agenctx-agent-demo.gif)
 
 `PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served—not whether the model understood or followed it.
 
