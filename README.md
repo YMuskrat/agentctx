@@ -59,7 +59,7 @@ Run `agenctx status` to list every agent receipt as a hash and task name. Then o
 
 ![A two-command terminal walkthrough showing agenctx status followed by session show for one agent receipt](./assets/agenctx-agent-demo.gif)
 
-`PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served—not whether the model understood or followed it.
+`PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served, not whether the model understood or followed it.
 
 ## How context is organized
 

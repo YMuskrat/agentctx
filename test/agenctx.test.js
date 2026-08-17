@@ -32,6 +32,20 @@ test.afterEach(() => {
   }
 });
 
+test('init opens with the agenctx llama poster once', () => {
+  const root = tempProject({ name: 'llama-project' });
+  const first = run(root, 'init');
+  assert.equal(first.status, 0, first.stderr);
+  assert.ok(first.stdout.includes('       /\\  /\\        [ rules ]'));
+  assert.match(first.stdout, /\[ decisions \]/);
+  assert.match(first.stdout, /\[ warnings \]/);
+  assert.match(first.stdout, /durable context for coding agents/);
+
+  const repeated = run(root, 'init');
+  assert.equal(repeated.status, 0, repeated.stderr);
+  assert.doesNotMatch(repeated.stdout, /\[ decisions \]/);
+});
+
 test('old entries spend the configured period in ambient state', () => {
   const old = new Date(Date.now() - 61 * 86400000).toISOString();
   const state = {
@@ -501,7 +515,7 @@ test('view is a complete context directory and banners separate pinned entries',
 
   const overview = run(root, 'view');
   assert.equal(overview.status, 0, overview.stderr);
-  assert.match(overview.stdout, /checkout-api — Example service/);
+  assert.match(overview.stdout, /checkout-api: Example service/);
   assert.match(overview.stdout, /IMPORTANT · PINNED \(1\)/);
   assert.match(overview.stdout, /warnings\s+2\s+1\s+Critical gotchas/);
   assert.match(overview.stdout, /decisions\s+1\s+0\s+Architectural choices/);

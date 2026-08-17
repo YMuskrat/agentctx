@@ -2,7 +2,7 @@
 'use strict';
 
 const HELP = `
-agenctx — version control for agent context
+agenctx: version control for agent context
 
 Usage:
   agenctx <command> [args] [options]
@@ -22,9 +22,9 @@ Core commands:
   sync                     Re-scan project for package/env changes
 
 Lifecycle:
-  pin <id>                 Pin entry — always shown to agents
-  unpin <id>               Unpin entry — return to normal lifecycle
-  archive <id>             Archive entry — hidden from agents
+  pin <id>                 Pin entry; always shown to agents
+  unpin <id>               Unpin entry; return to normal lifecycle
+  archive <id>             Archive entry; hidden from agents
   restore <id>             Restore archived entry to active
   revert <id>              Archive a decision and document its reversion
 
@@ -66,7 +66,7 @@ Flags:
 Examples:
   agenctx init
   agenctx add warn "don't touch legacy/api.js"
-  agenctx add decision -m "chose JWT over sessions — stateless"
+  agenctx add decision -m "chose JWT over sessions; stateless"
   agenctx view
   agenctx view warnings
   agenctx search "authentication"
