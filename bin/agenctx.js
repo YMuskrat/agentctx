@@ -14,6 +14,9 @@ Core commands:
   view                     Show project, pinned context, and every context type
   view <banner>            Show pinned and other entries in one context type
   edit <id> [-m message]   Update an entry inline or in an editor
+  import <file>             Preview Markdown migration into managed context
+  import <file> --apply     Import sections and migrate a root agent guide
+  clear <id|banner|all>     Remove entries from live context
   dump [target]            Generate agent guides (openai/claude/cursor/all)
   dump [target] --check    Check generated sections without changing files
   sync                     Re-scan project for package/env changes
@@ -67,6 +70,7 @@ Examples:
   agenctx view
   agenctx view warnings
   agenctx search "authentication"
+  agenctx import AGENTS.md
   agenctx --agent start "fix authentication"
   agenctx --agent end
   agenctx dump
@@ -119,6 +123,16 @@ async function main() {
       case 'edit': {
         const { edit } = require('../lib/commands/edit');
         edit(args);
+        break;
+      }
+      case 'import': {
+        const { importContext } = require('../lib/commands/import');
+        await importContext(args);
+        break;
+      }
+      case 'clear': {
+        const { clearContext } = require('../lib/commands/clear');
+        await clearContext(args);
         break;
       }
       case 'dump': {

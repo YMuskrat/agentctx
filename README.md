@@ -78,7 +78,7 @@ An autonomous agent discovers and reads relevant context. Afterward, a human fin
 
 Entries begin as active. Older, rarely read entries decay to ambient and can later be archived. Important entries can be pinned so they remain visible.
 
-CLI screens use the same visual hierarchy throughout: important pinned context first, then populated context types, then empty types. Read state and full reads are labeled explicitly, and each screen ends with a short `Next` section instead of a wall of commands.
+CLI screens use the same visual hierarchy throughout: important pinned context first, then populated context types, then empty types. Read state and full reads are labeled explicitly; command discovery stays in `agenctx --help` instead of being repeated after every result.
 
 `agenctx view` is the project directory: it shows the project description, globally pinned context, and every context type with its purpose, entry count, and open command. `agenctx view warnings` (or any other type) then separates pinned entries from the other active entries.
 
@@ -106,6 +106,9 @@ agenctx unpin <id>
 agenctx archive <id>
 agenctx restore <id>
 agenctx revert <id>
+agenctx clear <id>          # remove one entry from live context
+agenctx clear <banner>      # empty one context type
+agenctx clear all           # empty every context type
 
 # Track exactly what agenctx serves during an agent interaction
 agenctx --agent start "task description"
@@ -123,7 +126,39 @@ agenctx sync
 
 Run `agenctx --help` for the complete command reference.
 
+`clear` is intentionally narrower than deleting `.agenctx/`: it removes entries from the live context while preserving banner definitions, audit history, and sealed agent-session receipts. Destructive clears require terminal confirmation; use `--force` only for deliberate non-interactive cleanup.
+
 ## Agent instruction files
+
+Already have a long agent instruction file? Preview a deterministic migration into lifecycle-managed context:
+
+```sh
+agenctx import AGENTS.md
+agenctx import AGENTS.md --apply
+```
+
+The importer maps Markdown sections such as Testing, Architecture, Rules, Warnings, and Configuration to the corresponding banners. Entries remain active and unpinned so a maintainer can review what deserves permanent priority. On apply, a root `AGENTS.md`, `CLAUDE.md`, or `.cursorrules` is preserved exactly under `.agenctx/imports/` and replaced with the concise static guide. Use `--keep-source` to import without replacing it.
+
+Unknown level-two sections can become custom banners, but agenctx never invents their purpose. The importer first shows the complete table and marks unresolved custom sections, then asks whether to describe them now. Declining skips all unresolved custom sections; an empty individual purpose skips that section. A Markdown file can provide the purpose explicitly, and nested headings then become entries in that banner:
+
+```md
+## Must See
+> Purpose: Mandatory context before changing authentication.
+
+### Token rotation
+Tokens must rotate atomically.
+```
+
+Non-interactive imports skip unknown sections without a `Purpose:` line and report them in the preview. Unknown README sections remain conservative and are skipped unless they explicitly provide a purpose.
+
+README migration is deliberately conservative and explicit:
+
+```sh
+agenctx import README.md          # preview operational sections only
+agenctx import README.md --apply  # README.md remains unchanged
+```
+
+Unrecognized README sections are skipped rather than being turned into context noise. The importer is offline and deterministic; it does not send repository content to a model.
 
 `agenctx dump` creates three concise agent guides without replacing the rest of their content:
 

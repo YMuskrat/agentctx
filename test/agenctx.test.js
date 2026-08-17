@@ -131,6 +131,192 @@ test('dump creates exactly three concise agent instruction files', () => {
   }
 });
 
+test('import previews an agent guide without changing project files', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  assert.equal(run(root, 'add', 'testing', 'Run the complete offline test suite.').status, 0);
+  const agents = path.join(root, 'AGENTS.md');
+  const original = [
+    '# Project instructions',
+    '',
+    'Keep runtime dependencies replaceable.',
+    '',
+    '## Testing',
+    '',
+    'Run the complete `offline` test suite.',
+    '',
+  ].join('\n');
+  fs.writeFileSync(agents, original, 'utf8');
+
+  const preview = run(root, 'import', 'AGENTS.md');
+  assert.equal(preview.status, 0, preview.stderr);
+  assert.match(preview.stdout, /IMPORT PREVIEW/);
+  assert.match(preview.stdout, /Project instructions\s+rules/);
+  assert.doesNotMatch(preview.stdout, /Testing\s+testing/);
+  assert.match(preview.stdout, /1 new entry\s+· 1 already imported/);
+  assert.match(preview.stdout, /Preview only; no files were changed/);
+  assert.equal(fs.readFileSync(agents, 'utf8'), original);
+
+  const state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(state.banners.rules.entries.length, 0);
+  assert.equal(state.banners.testing.entries.length, 1);
+});
+
+test('import migrates an agent guide into lifecycle entries and preserves its source', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const agents = path.join(root, 'AGENTS.md');
+  const original = [
+    '# Project instructions',
+    '',
+    'Keep runtime dependencies replaceable.',
+    '',
+    '## Architecture decisions',
+    '',
+    'Use adapter contracts at every provider boundary.',
+    '',
+    '## Testing',
+    '',
+    'Run the complete offline test suite.',
+    '',
+    '## Known hazards',
+    '',
+    'Never expose decrypted provider credentials.',
+    '',
+  ].join('\n');
+  fs.writeFileSync(agents, original, 'utf8');
+
+  const imported = run(root, 'import', 'AGENTS.md', '--apply');
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.match(imported.stdout, /Imported 4 entries/);
+  assert.match(imported.stdout, /Source replaced with the static agenctx guide/);
+
+  const state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.match(state.banners.rules.entries[0].content, /Keep runtime dependencies replaceable/);
+  assert.match(state.banners.decisions.entries[0].content, /adapter contracts/);
+  assert.match(state.banners.testing.entries[0].content, /offline test suite/);
+  assert.match(state.banners.warnings.entries[0].content, /decrypted provider credentials/);
+  for (const banner of ['rules', 'decisions', 'testing', 'warnings']) {
+    assert.equal(state.banners[banner].entries[0].status, 'active');
+    assert.equal(state.banners[banner].entries[0].source.file, 'AGENTS.md');
+  }
+
+  const replacement = fs.readFileSync(agents, 'utf8');
+  assert.match(replacement, /<!-- agenctx:start -->/);
+  assert.match(replacement, /agenctx --agent start/);
+  assert.doesNotMatch(replacement, /decrypted provider credentials/);
+
+  const importsDir = path.join(root, '.agenctx', 'imports');
+  const backups = fs.readdirSync(importsDir);
+  assert.equal(backups.length, 1);
+  assert.match(backups[0], /^AGENTS\.[0-9a-f]{12}\.md$/);
+  assert.equal(fs.readFileSync(path.join(importsDir, backups[0]), 'utf8'), original);
+
+  const second = run(root, 'import', 'AGENTS.md', '--apply');
+  assert.equal(second.status, 0, second.stderr);
+  assert.match(second.stdout, /No importable context found/);
+});
+
+test('README import selects operational sections and leaves the README unchanged', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const readmePath = path.join(root, 'README.md');
+  const original = [
+    '# Example product',
+    '',
+    'Marketing introduction that should not become agent context.',
+    '',
+    '## Architecture',
+    '',
+    'The runtime depends on small adapter contracts.',
+    '',
+    '## Screenshots',
+    '',
+    'A gallery that should not become agent context.',
+    '',
+    '## Tests',
+    '',
+    'Run python -m pytest.',
+    '',
+    '## Configuration',
+    '',
+    'Use a stable secret key in production.',
+    '',
+  ].join('\n');
+  fs.writeFileSync(readmePath, original, 'utf8');
+
+  const imported = run(root, 'import', 'README.md', '--apply');
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.match(imported.stdout, /3 new entries/);
+  assert.match(imported.stdout, /2 sections skipped/);
+  assert.match(imported.stdout, /source file will remain unchanged/i);
+  assert.equal(fs.readFileSync(readmePath, 'utf8'), original);
+  assert.equal(fs.existsSync(path.join(root, '.agenctx', 'imports')), false);
+
+  const state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.match(state.banners.decisions.entries[0].content, /adapter contracts/);
+  assert.match(state.banners.testing.entries[0].content, /python -m pytest/);
+  assert.match(state.banners.env.entries[0].content, /stable secret key/);
+  assert.equal(state.banners.notes.entries.length, 0);
+
+  const repeated = run(root, 'import', 'README.md', '--apply');
+  assert.equal(repeated.status, 0, repeated.stderr);
+  assert.match(repeated.stdout, /0 new entries/);
+  assert.match(repeated.stdout, /Nothing to import/);
+});
+
+test('custom Markdown sections require a purpose and keep nested headings together', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const sourcePath = path.join(root, 'PROJECT_CONTEXT.md');
+  const source = [
+    '# Migration seed',
+    '',
+    'Document introduction.',
+    '',
+    '## Release Confidence',
+    '',
+    '### Candidate promotion',
+    '',
+    'Run the promotion checks before publishing.',
+    '',
+    '## Escalation Paths',
+    '',
+    '> Purpose: Guidance for routing conversations to human operators.',
+    '',
+    '### Human handoff',
+    '',
+    'Preserve the conversation trace during handoff.',
+    '',
+  ].join('\n');
+  fs.writeFileSync(sourcePath, source, 'utf8');
+
+  const imported = run(root, 'import', 'PROJECT_CONTEXT.md', '--apply');
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.match(imported.stdout, /Candidate promotion\s+release-confidence\s+needs purpose/);
+  assert.match(imported.stdout, /CUSTOM BANNERS NEED PURPOSE/);
+  assert.match(imported.stdout, /Release Confidence\s+→\s+release-confidence/);
+  assert.match(imported.stdout, /CUSTOM BANNERS/);
+  assert.match(imported.stdout, /escalation-paths.*Guidance for routing conversations/);
+  assert.match(imported.stdout, /Imported 1 entry/);
+  assert.ok(
+    imported.stdout.indexOf('IMPORT PREVIEW') < imported.stdout.indexOf('CUSTOM BANNERS NEED PURPOSE'),
+  );
+
+  const config = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'config.json'), 'utf8'));
+  assert.deepEqual(config.custom_banners, ['escalation-paths']);
+  assert.equal(
+    config.banner_descriptions['escalation-paths'],
+    'Guidance for routing conversations to human operators.',
+  );
+  assert.equal(config.banner_descriptions['release-confidence'], undefined);
+
+  const state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(state.banners['escalation-paths'].entries.length, 1);
+  assert.match(state.banners['escalation-paths'].entries[0].content, /Human handoff/);
+  assert.equal(state.banners['release-confidence'], undefined);
+});
+
 test('agent sessions seal ordered served context in hash-chained receipts', () => {
   const root = tempProject({ name: 'receipt-test', description: 'Session receipt demo' });
   assert.equal(run(root, 'init').status, 0);
@@ -244,6 +430,55 @@ test('core entry lifecycle and session audit work end to end', () => {
   assert.match(audit.stdout, /archive/);
 });
 
+test('clear removes an entry, a banner, or all live context with confirmation safeguards', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const first = run(root, 'add', 'warning', 'First warning');
+  const id = first.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(id, first.stdout);
+  assert.equal(run(root, 'add', 'warning', 'Second warning').status, 0);
+  assert.equal(run(root, 'add', 'decision', 'Use adapter contracts').status, 0);
+
+  const unconfirmed = run(root, 'clear', id);
+  assert.equal(unconfirmed.status, 1);
+  assert.match(unconfirmed.stderr, /requires confirmation/);
+
+  let state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(state.banners.warnings.entries.length, 2);
+
+  const one = run(root, 'clear', id, '--force');
+  assert.equal(one.status, 0, one.stderr);
+  assert.match(one.stdout, /Cleared warnings/);
+  state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(state.banners.warnings.entries.length, 1);
+  assert.equal(state.banners.decisions.entries.length, 1);
+
+  const banner = run(root, 'clear', 'warning', '--force');
+  assert.equal(banner.status, 0, banner.stderr);
+  assert.match(banner.stdout, /Cleared 1 entry from warnings/);
+  state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(state.banners.warnings.entries.length, 0);
+  assert.equal(state.banners.decisions.entries.length, 1);
+
+  assert.equal(run(root, 'add', 'rule', 'Keep tests offline').status, 0);
+  const all = run(root, 'clear', '--all', '--force');
+  assert.equal(all.status, 0, all.stderr);
+  assert.match(all.stdout, /Cleared all 2 entries/);
+  state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  assert.equal(
+    Object.values(state.banners).reduce((count, value) => count + value.entries.length, 0),
+    0,
+  );
+
+  const historyDir = path.join(root, '.agenctx', 'history');
+  const history = fs.readdirSync(historyDir)
+    .sort()
+    .map(file => JSON.parse(fs.readFileSync(path.join(historyDir, file), 'utf8')));
+  assert.equal(history.filter(event => event.action === 'clear').length, 3);
+  assert.equal(history.at(-1).scope, 'all');
+  assert.equal(history.at(-1).count, 2);
+});
+
 test('optional Git hook checks generated files without staging them', () => {
   const root = tempProject();
   const git = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
@@ -272,13 +507,13 @@ test('view is a complete context directory and banners separate pinned entries',
   assert.match(overview.stdout, /decisions\s+1\s+0\s+Architectural choices/);
   assert.match(overview.stdout, /notes\s+0\s+0\s+Useful implementation/);
   assert.match(overview.stdout, /blockers\s+0\s+0\s+Known constraints/);
-  assert.match(overview.stdout, /agenctx view warnings\s+·\s+open the highest-priority populated type/);
+  assert.doesNotMatch(overview.stdout, /\bNext\b/);
 
   const warnings = run(root, 'view', 'warnings');
   assert.equal(warnings.status, 0, warnings.stderr);
   assert.match(warnings.stdout, /IMPORTANT · PINNED \(1\)[\s\S]*Never edit generated API files/);
   assert.match(warnings.stdout, /OTHER CONTEXT \(1\)[\s\S]*Another active warning/);
-  assert.match(warnings.stdout, /agenctx view\s+·\s+back to all context types/);
+  assert.doesNotMatch(warnings.stdout, /\bNext\b/);
 });
 
 test('custom context types are discoverable with their descriptions', () => {
@@ -290,7 +525,7 @@ test('custom context types are discoverable with their descriptions', () => {
   const overview = run(root, 'view');
   assert.equal(overview.status, 0, overview.stderr);
   assert.match(overview.stdout, /must-see\s+1\s+0\s+Mandatory context before changes/);
-  assert.match(overview.stdout, /agenctx view must-see/);
+  assert.doesNotMatch(overview.stdout, /\bNext\b/);
   const banner = run(root, 'view', 'must-see');
   assert.match(banner.stdout, /Mandatory context before changes/);
   assert.match(banner.stdout, /Read this first/);
