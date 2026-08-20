@@ -2,25 +2,57 @@
 
 ![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.jpg?v=3)
 
-Version-controlled project context for AI coding agents. [agenctx.com](https://agenctx.com)
+Context management for AI coding agents. [agenctx.com](https://agenctx.com)
 
-AI coding agents repeatedly rediscover the same project rules, architectural decisions, test requirements, and hazards. `agenctx` gives a repository one shared context store that humans maintain and agents query when they need it.
+## What is agenctx?
 
-Unlike a growing prompt or a long `AGENTS.md`, the context remains structured, searchable, lifecycle-managed, and auditable. Agents retrieve relevant entries on demand, while maintainers can see exactly what was served during each tracked session.
+`agenctx` is a local, version-controlled context management system for AI agents. It gives each repository a shared memory for the rules, decisions, warnings, test requirements, design patterns, security constraints, and other knowledge an agent needs to work safely.
 
-`agenctx` is local-first, dependency-free, and requires Node.js 18 or later. It has no hosted service, telemetry, or runtime dependencies.
+Humans maintain that knowledge inside `.agenctx/`. Agents discover it through a small generated guide, search the relevant context channel, inspect previews, and open the exact entries they need before acting. The complete store is not copied into every prompt.
 
-## What agenctx does
+This means the repository context can grow with the project without forcing every agent to read all of it on every task. A design task can retrieve design context; a security review can retrieve security context; a testing task can retrieve testing context. Tracked sessions then show exactly what Agenctx served.
+
+`agenctx` is not another coding agent or a hosted knowledge base. It is the context layer between a repository and the agents working on it. It is local-first, dependency-free, has no telemetry, and requires Node.js 18 or later.
+
+## The problem with static agent files
+
+Files such as `AGENTS.md`, `CLAUDE.md`, and `.cursorrules` are useful for short, stable instructions. The problem appears when they become the entire project memory:
+
+- One document starts mixing security rules, design conventions, architecture decisions, testing commands, current hazards, and historical notes.
+- Every task receives instructions that may be irrelevant, while the one important rule can be buried deep in the file.
+- Old context stays beside current context unless someone remembers to clean it up.
+- Equivalent instructions copied across agent-specific files can drift apart.
+- Agents have no safe proposal boundary if they can directly rewrite the trusted instructions.
+- Git records file changes, but not which exact instructions were discovered or served during an agent session.
+
+`AGENTS.md` can contain sections, and some tools support directory-specific guides. Agenctx does not pretend otherwise or remove those files. Instead, `agenctx dump` keeps them as concise navigation guides while the changing project knowledge lives in a structured store with search, lifecycle, review, and delivery receipts.
+
+## A simple mental model
+
+Think of a static instruction file as one briefing sheet placed on every agent's desk. It works while the project is small, but the sheet becomes harder to use as more teams keep adding notes.
+
+Agenctx is closer to a project library:
+
+- `.agenctx/` is the library committed with the repository.
+- Banners are switchable shelves such as `design`, `security`, `testing`, and `warnings`.
+- `view` and `search` are the catalogue.
+- Opening an entry in full is taking the relevant book from the shelf.
+- Lifecycle management is the librarian moving unused material into review and then the archive.
+- A session receipt is the checkout record showing exactly what was served and in what order.
+- The proposal queue is the acquisitions desk: agents can suggest knowledge, but a human decides what becomes trusted context.
+
+A library can hold far more knowledge than one person needs for one task. In the same way, Agenctx lets project context grow without turning every interaction into one enormous prompt.
+
+## How it works
+
+1. **Humans add trusted context.** Entries are stored under built-in or custom banners and committed with the repository.
+2. **Agent guides stay small.** `agenctx dump` teaches supported agents how to navigate the store instead of duplicating the store inside their instruction files.
+3. **Agents retrieve context deliberately.** They browse channels, search deterministic previews, and open relevant entries in full before using them.
+4. **Context stays maintainable.** Entries move through active, ambient, and archived states; important entries can be pinned permanently.
+5. **Agent learning is reviewed.** An agent may propose at most two entries per session, but proposals remain untrusted until a human approves them.
+6. **Delivery is traceable.** A tracked session produces a content-addressed, hash-chained receipt of the exact ordered context Agenctx served.
 
 ![Agenctx context system showing human-managed repository context, agent access, lifecycle states, session receipts, and human-reviewed proposals](./assets/agenctx-context-system.jpg)
-
-- **Store project knowledge:** Rules, decisions, warnings, testing requirements, environment notes, and custom context types live in `.agenctx/` and can be reviewed through Git.
-- **Switch context channels:** Banners let a human or agent open the domain relevant to the task—such as design, security, testing, or deployment—without loading every project instruction.
-- **Serve context on demand:** Generated agent guides teach Codex, Claude, and Cursor how to discover previews and retrieve the complete entry before acting on it.
-- **Keep context healthy:** Unread entries move from active to ambient review and then to a retained archive. Reads extend retention; pinned entries do not decay.
-- **Control agent learning:** An agent can propose at most two entries per session. Proposals are never trusted or served until a human approves them.
-- **Trace delivery:** Tracked sessions produce content-addressed, hash-chained receipts containing the exact ordered context Agenctx served.
-- **Work from CLI or UI:** Agents use deterministic commands; humans can browse, edit, review, and inspect sessions in the local control plane.
 
 ## Local control plane
 
