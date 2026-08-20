@@ -15,6 +15,7 @@ Unlike a growing prompt or a long `AGENTS.md`, the context remains structured, s
 ![Agenctx context system showing human-managed repository context, agent access, lifecycle states, session receipts, and human-reviewed proposals](./assets/agenctx-context-system.jpg)
 
 - **Store project knowledge:** Rules, decisions, warnings, testing requirements, environment notes, and custom context types live in `.agenctx/` and can be reviewed through Git.
+- **Switch context channels:** Banners let a human or agent open the domain relevant to the task—such as design, security, testing, or deployment—without loading every project instruction.
 - **Serve context on demand:** Generated agent guides teach Codex, Claude, and Cursor how to discover previews and retrieve the complete entry before acting on it.
 - **Keep context healthy:** Unread entries move from active to ambient review and then to a retained archive. Reads extend retention; pinned entries do not decay.
 - **Control agent learning:** An agent can propose at most two entries per session. Proposals are never trusted or served until a human approves them.
@@ -31,7 +32,7 @@ agenctx ui
 
 ![Agenctx local UI showing banner-scoped context, search, lifecycle controls, and rule details](./assets/agenctx-ui.png)
 
-The local control plane is the human interface for the same repository data used by the CLI. It provides a banner-based context editor, agent proposal and ambient review queues, complete session traces, decay settings, and preview/full delivery bars. Humans can add context inside a selected banner, edit it directly, pin, archive, restore, approve, and reject it without bypassing the repository audit history.
+The local control plane is the human interface for the same repository data used by the CLI. Its banner list acts as a context switcher: select a channel to browse, search, and add context only within that domain. The UI also provides agent proposal and ambient review queues, complete session traces, decay settings, and preview/full delivery bars. Humans can edit, pin, archive, restore, approve, and reject context without bypassing the repository audit history.
 
 The server binds only to `127.0.0.1`, uses a new launch token for API access, makes no external requests, and refuses stale browser writes when the CLI has changed the same repository data. Use `agenctx ui --no-open` to print the private launch URL without opening a browser, or `agenctx ui --port=4317` to select a local port.
 
@@ -88,7 +89,26 @@ Run `agenctx status` to list every agent receipt as a hash and task name. Then o
 
 `PREVIEW` and `FULL` distinguish how each entry was delivered, while sequence numbers preserve the serving order. The receipt proves what agenctx served, not whether the model understood or followed it.
 
-## How context is organized
+## Switchable context channels
+
+A project rarely has one undifferentiated set of instructions. A design task needs interface patterns and accessibility constraints; a security review needs authentication rules and known hazards. Agenctx banners are named context channels that keep those domains separate while preserving one shared repository memory.
+
+Humans switch channels by selecting a banner in the UI. Agents do the same explicitly through `view` and banner-filtered `search`:
+
+```sh
+agenctx banner add design --description="UI patterns, design tokens, and accessibility constraints"
+agenctx banner add security --description="Authentication, secrets, and threat-model constraints"
+
+agenctx add design "Use the eight-point spacing scale"
+agenctx add security "Never include provider credentials in logs"
+
+agenctx view design
+agenctx search "credentials" --banner=security
+```
+
+An `AGENTS.md` file can contain sections and some tools support directory-specific guides, but it remains a static document. `agenctx dump` keeps that file as a concise navigation guide while the changing project knowledge lives in searchable channels with independent lifecycle and delivery history.
+
+Every repository starts with these built-in channels:
 
 | Banner | What belongs there |
 |---|---|
