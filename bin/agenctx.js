@@ -14,6 +14,10 @@ Core commands:
   view                     Show project, pinned context, and every context type
   view <banner>            Show pinned and other entries in one context type
   edit <id> [-m message]   Update an entry inline or in an editor
+  propose <banner> <text>  Agent proposes durable context for human review
+  proposals                List proposals awaiting human review
+  approve <id>             Approve a proposal into trusted context
+  reject <id>              Reject a pending proposal
   import <file>             Preview Markdown migration into managed context
   import <file> --apply     Import sections and migrate a root agent guide
   clear <id|banner|all>     Remove entries from live context
@@ -41,17 +45,19 @@ Search:
 
 Sessions:
   --agent start "question" Start a tracked agent interaction
-  --agent end              Seal its ordered served-context receipt
+  --agent end              Seal the selected served-context receipt
   session start "question" Start a session (one per user question)
-  session end              Close the active session
+  session end [id]         Close one active session
   session list             All past sessions
   session show <id|hash>   Show the exact ordered served-context receipt
+  session abandon <id>     Remove a stale live session without a receipt
 
 Audit:
   audit                    Show recent read/write activity
   audit --session=latest   Show last agent session
   audit <id> --detail      Show context agent had at time of entry
   status                   List agent receipt hashes and task names
+  ui [--no-open]           Open the local human control plane
 
 Banners:
   warnings   decisions   rules     testing
@@ -60,6 +66,7 @@ Banners:
 
 Flags:
   agenctx view --agent         Log what was served (agent mode)
+  --session=<id>               Select a live session; required when several exist
   agenctx view --about="jwt"   Filter entries by topic
   agenctx view --ambient       Include ambient entries
   agenctx archive <id> --force Skip conflict check
@@ -73,14 +80,28 @@ Examples:
   agenctx search "authentication"
   agenctx import AGENTS.md
   agenctx --agent start "fix authentication"
-  agenctx --agent end
+  agenctx view --session=s-a1b2c3
+  agenctx --agent end --session=s-a1b2c3
   agenctx dump
   agenctx pin abc123
   agenctx audit --session=latest
 `.trim();
 
 async function main() {
-  const [,, command, ...args] = process.argv;
+  const rawArgs = process.argv.slice(2);
+  const filteredArgs = [];
+  let selectedSession = null;
+  for (let i = 0; i < rawArgs.length; i++) {
+    if (rawArgs[i].startsWith('--session=')) {
+      selectedSession = rawArgs[i].slice(10);
+    } else if (rawArgs[i] === '--session' && rawArgs[i + 1]) {
+      selectedSession = rawArgs[++i];
+    } else {
+      filteredArgs.push(rawArgs[i]);
+    }
+  }
+  if (selectedSession) process.env.AGENCTX_SESSION_ID = selectedSession;
+  const [command, ...args] = filteredArgs;
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     console.log(HELP);
@@ -124,6 +145,26 @@ async function main() {
       case 'edit': {
         const { edit } = require('../lib/commands/edit');
         edit(args);
+        break;
+      }
+      case 'propose': {
+        const { propose } = require('../lib/commands/proposals');
+        propose(args);
+        break;
+      }
+      case 'proposals': {
+        const { list } = require('../lib/commands/proposals');
+        list();
+        break;
+      }
+      case 'approve': {
+        const { approve } = require('../lib/commands/proposals');
+        approve(args);
+        break;
+      }
+      case 'reject': {
+        const { reject } = require('../lib/commands/proposals');
+        reject(args);
         break;
       }
       case 'import': {
@@ -189,6 +230,11 @@ async function main() {
       case 'status': {
         const { status } = require('../lib/commands/status');
         status(args);
+        break;
+      }
+      case 'ui': {
+        const { startUI } = require('../lib/ui/server');
+        startUI(args);
         break;
       }
       case 'search': {

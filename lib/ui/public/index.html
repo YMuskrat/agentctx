@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>agenctx</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">agenctx</div>
+      <div class="repo-block">
+        <span class="label">Repository</span>
+        <strong id="repo-name">Loading…</strong>
+        <span id="repo-stack" class="muted"></span>
+      </div>
+      <nav aria-label="Main">
+        <button class="nav-item active" data-view="context">Context</button>
+        <button class="nav-item" data-view="review">Review <b id="review-count" class="count-badge">0</b></button>
+        <button class="nav-item" data-view="sessions">Agent sessions</button>
+        <button class="nav-item" data-view="settings">Settings</button>
+      </nav>
+      <div class="local-note">Local only. No telemetry or cloud sync.</div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <span id="page-eyebrow" class="label">Context entries</span>
+          <h1 id="page-title">Context</h1>
+        </div>
+        <div class="top-actions">
+          <span id="updated-at" class="muted"></span>
+          <button id="refresh" class="button ghost">Refresh</button>
+        </div>
+      </header>
+
+      <section id="loading" class="loading"><span></span>Reading repository context…</section>
+      <section id="error-state" class="error-state hidden"><h2>Could not load Agenctx</h2><p id="error-message"></p></section>
+      <section id="view" class="view hidden" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-head"><h2 id="modal-title">Add context</h2><button id="modal-close" class="icon-button" aria-label="Close">×</button></div>
+      <form id="entry-form">
+        <input id="entry-id" type="hidden">
+        <label>Banner<select id="entry-banner" required></select></label>
+        <label>Context<textarea id="entry-content" rows="8" maxlength="20000" required placeholder="Write the complete, repository-specific instruction."></textarea></label>
+        <label id="pin-field" class="check"><input id="entry-pinned" type="checkbox"> Pin so this never expires automatically</label>
+        <div class="modal-actions"><button type="button" id="modal-cancel" class="button ghost">Cancel</button><button class="button primary" type="submit">Save context</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

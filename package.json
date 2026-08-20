@@ -12,7 +12,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "check": "node --check bin/agenctx.js",
+    "check": "node --check bin/agenctx.js && node --check lib/ui/server.js && node --check lib/ui/public/app.js",
     "test": "node --test"
   },
   "engines": {

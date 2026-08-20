@@ -2,13 +2,54 @@
 
 ![A llama archivist organizing pinned context cards and version history](./assets/agenctx-hero.jpg?v=3)
 
-Durable, auditable project context for AI coding agents. [agenctx.com](https://agenctx.com)
+Version-controlled project context for AI coding agents. [agenctx.com](https://agenctx.com)
 
-> Originally built on March 12, 2026. The [first scaffold commit](https://github.com/YMuskrat/agentctx/commit/1668fe6b0eb4d2c9a8de785e954e17ef4faa1b7c) and tagged [original prototype snapshot](https://github.com/YMuskrat/agentctx/tree/prototype-2026-03-12) are preserved; public-release work resumed five months later on August 13, 2026.
+AI coding agents repeatedly rediscover the same project rules, architectural decisions, test requirements, and hazards. `agenctx` gives a repository one shared context store that humans maintain and agents query when they need it.
 
-AI agents repeatedly rediscover the same project rules, decisions, and hazards. `agenctx` keeps that knowledge in a small, version-controlled store inside the repository, with lifecycle management and an audit trail.
+Unlike a growing prompt or a long `AGENTS.md`, the context remains structured, searchable, lifecycle-managed, and auditable. Agents retrieve relevant entries on demand, while maintainers can see exactly what was served during each tracked session.
 
-It is a dependency-free CLI for Node.js 18 and later.
+`agenctx` is local-first, dependency-free, and requires Node.js 18 or later. It has no hosted service, telemetry, or runtime dependencies.
+
+## What agenctx does
+
+```text
+Human-maintained context --> .agenctx/ committed with the repository
+                                  |
+                    +-------------+-------------+
+                    |             |             |
+                    v             v             v
+              view and search   lifecycle    session receipts
+                    |             |             |
+                    v             v             v
+               coding agent   active -->      exact context
+                              ambient -->      served, in order
+                              archived
+
+Agent discoveries --> proposal queue --> human review --> trusted context
+```
+
+- **Store project knowledge:** Rules, decisions, warnings, testing requirements, environment notes, and custom context types live in `.agenctx/` and can be reviewed through Git.
+- **Serve context on demand:** Generated agent guides teach Codex, Claude, and Cursor how to discover previews and retrieve the complete entry before acting on it.
+- **Keep context healthy:** Unread entries move from active to ambient review and then to a retained archive. Reads extend retention; pinned entries do not decay.
+- **Control agent learning:** An agent can propose at most two entries per session. Proposals are never trusted or served until a human approves them.
+- **Trace delivery:** Tracked sessions produce content-addressed, hash-chained receipts containing the exact ordered context Agenctx served.
+- **Work from CLI or UI:** Agents use deterministic commands; humans can browse, edit, review, and inspect sessions in the local control plane.
+
+## Local control plane
+
+Open the repository UI from any directory inside an initialized project:
+
+```sh
+agenctx ui
+```
+
+![Agenctx local UI showing banner-scoped context, search, lifecycle controls, and rule details](./assets/agenctx-ui.png)
+
+The local control plane is the human interface for the same repository data used by the CLI. It provides a banner-based context editor, agent proposal and ambient review queues, complete session traces, decay settings, and preview/full delivery bars. Humans can add context inside a selected banner, edit it directly, pin, archive, restore, approve, and reject it without bypassing the repository audit history.
+
+The server binds only to `127.0.0.1`, uses a new launch token for API access, makes no external requests, and refuses stale browser writes when the CLI has changed the same repository data. Use `agenctx ui --no-open` to print the private launch URL without opening a browser, or `agenctx ui --port=4317` to select a local port.
+
+The UI is optional. Agents continue to use the CLI and generated instruction files, so Agenctx also works in terminals, CI, and headless environments.
 
 ## Install
 
@@ -98,6 +139,10 @@ agenctx add must-see "Authentication tokens must rotate atomically"
 agenctx add <banner> "message"
 agenctx add <banner> --pin "always remember this"
 agenctx edit <id> -m "updated context"
+agenctx propose <banner> "durable knowledge discovered by an agent"
+agenctx proposals
+agenctx approve <proposal-id>
+agenctx reject <proposal-id>
 agenctx view [banner-or-id]
 agenctx feed
 agenctx search "keyword" --since=1w
@@ -116,11 +161,11 @@ agenctx clear all           # empty every context type
 
 # Track exactly what agenctx serves during an agent interaction
 agenctx --agent start "task description"
-agenctx view
-agenctx view <type>
-agenctx view <id>
-agenctx search "keyword" --banner=<type>
-agenctx --agent end
+agenctx view --session=<id>
+agenctx view <type> --session=<id>
+agenctx view <id> --session=<id>
+agenctx search "keyword" --banner=<type> --session=<id>
+agenctx --agent end --session=<id>
 agenctx status
 agenctx session show <receipt-hash>
 
@@ -129,6 +174,36 @@ agenctx sync
 ```
 
 Run `agenctx --help` for the complete command reference.
+
+## Agent proposals
+
+During a tracked agent session, an agent may propose at most two pieces of durable repository knowledge. Most sessions should propose nothing. Proposals remain separate from project context and are never served to agents until a human approves them:
+
+```sh
+agenctx --agent start "fix token rotation"
+agenctx propose warning "Token rotation must update both stores atomically" --session=<id>
+agenctx --agent end --session=<id>
+
+agenctx proposals
+agenctx approve p-a1b2c3
+```
+
+Exact duplicates are rejected, reviews are refused while an agent session is active, and the pending review queue is capped at 20 items. Approved and rejected proposals leave the queue; their review remains in the audit history.
+
+## Concurrent agent sessions
+
+Starting a tracked interaction prints a session ID. Pass that ID to later commands so concurrent agents cannot mix their served context:
+
+```sh
+agenctx --agent start "fix authentication"
+# Session: s-a1b2c3
+
+agenctx view warnings --session=s-a1b2c3
+agenctx search tokens --session=s-a1b2c3
+agenctx --agent end --session=s-a1b2c3
+```
+
+When exactly one session is live, the flag is optional for backward compatibility. When several are live, agenctx refuses to guess. Integrations may set `AGENCTX_SESSION_ID` instead of passing the flag repeatedly. Use `agenctx session list` to see live sessions or `agenctx session abandon <id>` to remove a stale one without sealing a receipt. Live session files are kept under `.agenctx/runtime/`, which agenctx excludes from Git. Existing `.agenctx/session.json` files migrate automatically.
 
 `clear` is intentionally narrower than deleting `.agenctx/`: it removes entries from the live context while preserving banner definitions, audit history, and sealed agent-session receipts. Destructive clears require terminal confirmation; use `--force` only for deliberate non-interactive cleanup.
 
@@ -199,6 +274,10 @@ npm pack --dry-run
 ```
 
 The project deliberately uses no runtime dependencies or build step.
+
+## Project history
+
+Originally built on March 12, 2026. The [first scaffold commit](https://github.com/YMuskrat/agentctx/commit/1668fe6b0eb4d2c9a8de785e954e17ef4faa1b7c) and tagged [original prototype snapshot](https://github.com/YMuskrat/agentctx/tree/prototype-2026-03-12) are preserved; public-release work resumed five months later on August 13, 2026.
 
 ## License
 

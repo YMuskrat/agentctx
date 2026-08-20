@@ -3,10 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { runDecay } = require('../lib/decay');
+const { createUIServer } = require('../lib/ui/server');
 
 const CLI = path.resolve(__dirname, '..', 'bin', 'agenctx.js');
 const tempDirs = [];
@@ -26,7 +28,35 @@ function run(root, ...args) {
   });
 }
 
-test.afterEach(() => {
+function uiRequest(port, pathname, { method = 'GET', token, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const encoded = body == null ? null : JSON.stringify(body);
+    const request = http.request({
+      host: '127.0.0.1',
+      port,
+      path: pathname,
+      method,
+      headers: {
+        ...(token ? { 'X-Agenctx-Token': token } : {}),
+        ...(encoded ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(encoded) } : {}),
+      },
+    }, response => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        let json = null;
+        if ((response.headers['content-type'] || '').includes('application/json')) json = JSON.parse(text);
+        resolve({ status: response.statusCode, headers: response.headers, text, json });
+      });
+    });
+    request.on('error', reject);
+    if (encoded) request.write(encoded);
+    request.end();
+  });
+}
+
+test.after(() => {
   while (tempDirs.length) {
     fs.rmSync(tempDirs.pop(), { recursive: true, force: true });
   }
@@ -216,6 +246,107 @@ test('edit can update an entry non-interactively', () => {
   assert.match(viewed.stdout, /Use SQLite with WAL mode/);
 });
 
+test('agents can propose at most two entries for later human review', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'proposals.json'), 'utf8')),
+    { version: 1, proposals: [] },
+  );
+
+  const withoutSession = run(root, 'propose', 'warning', 'Do not rotate only one token store');
+  assert.equal(withoutSession.status, 1);
+  assert.match(withoutSession.stderr, /active tracked agent session/);
+
+  assert.equal(run(root, '--agent', 'start', 'Fix token rotation').status, 0);
+  const first = run(root, 'propose', 'warning', 'Token rotation must update both stores atomically');
+  assert.equal(first.status, 0, first.stderr);
+  const firstId = first.stdout.match(/\[(p-[0-9a-f]{6})\]/)?.[1];
+  assert.ok(firstId, first.stdout);
+
+  const second = run(root, 'propose', 'testing', 'Run the token rotation integration test');
+  assert.equal(second.status, 0, second.stderr);
+  const secondId = second.stdout.match(/\[(p-[0-9a-f]{6})\]/)?.[1];
+  assert.ok(secondId, second.stdout);
+
+  const third = run(root, 'propose', 'decision', 'Use a third token store');
+  assert.equal(third.status, 1);
+  assert.match(third.stderr, /already submitted 2 proposals/);
+
+  const listed = run(root, 'proposals');
+  assert.equal(listed.status, 0, listed.stderr);
+  assert.match(listed.stdout, new RegExp(firstId));
+  assert.match(listed.stdout, new RegExp(secondId));
+  assert.match(listed.stdout, /2 pending/);
+
+  const banner = run(root, 'view', 'warnings');
+  assert.equal(banner.status, 0, banner.stderr);
+  assert.doesNotMatch(banner.stdout, /Token rotation must update both stores atomically/);
+  const search = run(root, 'search', 'both stores atomically');
+  assert.equal(search.status, 0, search.stderr);
+  assert.match(search.stdout, /No matching context/);
+
+  const agentApproval = run(root, 'approve', firstId);
+  assert.equal(agentApproval.status, 1);
+  assert.match(agentApproval.stderr, /Agents cannot approve/);
+  assert.equal(run(root, '--agent', 'end').status, 0);
+
+  const approved = run(root, 'approve', firstId);
+  assert.equal(approved.status, 0, approved.stderr);
+  assert.match(approved.stdout, /Created trusted context/);
+  const entryId = approved.stdout.match(/trusted context \[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(entryId, approved.stdout);
+
+  const state = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'state.json'), 'utf8'));
+  const entry = state.banners.warnings.entries.find(item => item.id === entryId);
+  assert.equal(entry.content, 'Token rotation must update both stores atomically');
+  assert.equal(entry.proposal_id, firstId);
+  assert.match(entry.source_session, /^s-[0-9a-f]{6}$/);
+
+  const rejected = run(root, 'reject', secondId);
+  assert.equal(rejected.status, 0, rejected.stderr);
+  assert.match(rejected.stdout, /Rejected proposal/);
+  const empty = run(root, 'proposals');
+  assert.match(empty.stdout, /0 pending/);
+
+  const proposalData = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'proposals.json'), 'utf8'));
+  assert.deepEqual(proposalData, { version: 1, proposals: [] });
+
+  const history = fs.readdirSync(path.join(root, '.agenctx', 'history'))
+    .sort()
+    .map(file => JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'history', file), 'utf8')));
+  assert.equal(history.filter(event => event.action === 'propose').length, 2);
+  assert.ok(history.some(event => event.action === 'approve'
+    && event.proposal?.id === firstId
+    && event.proposal?.status === 'approved'));
+  assert.ok(history.some(event => event.action === 'reject'
+    && event.proposal?.id === secondId
+    && event.proposal?.status === 'rejected'
+    && event.proposal?.content === 'Run the token rotation integration test'));
+});
+
+test('proposal creation rejects duplicate trusted and pending context', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const added = run(root, 'add', 'warning', 'Never edit generated clients');
+  const entryId = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(entryId, added.stdout);
+  assert.equal(run(root, '--agent', 'start', 'Review generated clients').status, 0);
+
+  const trustedDuplicate = run(root, 'propose', 'warning', '  NEVER   edit generated clients  ');
+  assert.equal(trustedDuplicate.status, 1);
+  assert.match(trustedDuplicate.stderr, new RegExp(`already exists as entry \\[${entryId}\\]`));
+
+  const proposed = run(root, 'propose', 'rule', 'Regenerate clients after schema changes');
+  assert.equal(proposed.status, 0, proposed.stderr);
+  const proposalId = proposed.stdout.match(/\[(p-[0-9a-f]{6})\]/)?.[1];
+  assert.ok(proposalId, proposed.stdout);
+
+  const pendingDuplicate = run(root, 'propose', 'note', 'REGENERATE clients after   schema changes');
+  assert.equal(pendingDuplicate.status, 1);
+  assert.match(pendingDuplicate.stderr, new RegExp(`already pending as \\[${proposalId}\\]`));
+});
+
 test('dump preserves user-authored documentation and is idempotent', () => {
   const root = tempProject();
   assert.equal(run(root, 'init').status, 0);
@@ -248,9 +379,17 @@ test('dump creates exactly three concise agent instruction files', () => {
   for (const file of ['AGENTS.md', 'CLAUDE.md', '.cursorrules']) {
     const content = fs.readFileSync(path.join(root, file), 'utf8');
     assert.match(content, /agenctx --agent start/);
+    assert.match(content, /--session=<id>/);
     assert.match(content, /agenctx view/);
     assert.match(content, /agenctx view <type>/);
     assert.match(content, /agenctx search "<keyword>"/);
+    assert.match(content, /discovery commands return previews/i);
+    assert.match(content, /Never act on a relevant preview alone/);
+    assert.match(content, /agenctx view <entry-id> --session=<id>/);
+    assert.match(content, /Open the smallest relevant set/);
+    assert.match(content, /appears as `FULL` in the session receipt/);
+    assert.match(content, /agenctx propose <type>/);
+    assert.match(content, /Most tasks require no proposal/);
     assert.match(content, /agenctx --agent end/);
     assert.doesNotMatch(content, /agenctx add/);
     assert.doesNotMatch(content, /agenctx view warnings/);
@@ -264,6 +403,110 @@ test('dump creates exactly three concise agent instruction files', () => {
   assert.equal(run(root, 'dump').status, 0);
   for (const [file, content] of Object.entries(beforeContextChanges)) {
     assert.equal(fs.readFileSync(path.join(root, file), 'utf8'), content);
+  }
+});
+
+test('discovery previews direct agents to full retrieval and warn when skipped', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const added = run(root, 'add', 'warning', 'Regenerate clients after schema changes');
+  assert.equal(added.status, 0, added.stderr);
+  const entryId = added.stdout.match(/\[([0-9a-f]{6})\]/)?.[1];
+  assert.ok(entryId, added.stdout);
+
+  const started = run(root, '--agent', 'start', 'Update generated client');
+  assert.equal(started.status, 0, started.stderr);
+  const sessionId = started.stdout.match(/(s-[0-9a-f]{6})/)?.[1];
+  assert.ok(sessionId, started.stdout);
+
+  const searched = run(root, 'search', 'schema', `--session=${sessionId}`);
+  assert.equal(searched.status, 0, searched.stderr);
+  assert.match(searched.stdout, /SEARCH PREVIEWS/);
+  assert.match(searched.stdout, /Discovery only/);
+  assert.match(searched.stdout, new RegExp(`agenctx view <id> --session=${sessionId}`));
+
+  const banner = run(root, 'view', 'warnings', `--session=${sessionId}`);
+  assert.equal(banner.status, 0, banner.stderr);
+  assert.match(banner.stdout, /previews only/i);
+  assert.match(banner.stdout, new RegExp(`Open relevant entries in full: agenctx view <id> --session=${sessionId}`));
+
+  const ended = run(root, '--agent', 'end', `--session=${sessionId}`);
+  assert.equal(ended.status, 0, ended.stderr);
+  assert.match(ended.stdout, /RECEIPT SEALED/);
+  assert.match(ended.stdout, /PREVIEWS ONLY/);
+  assert.match(ended.stdout, /none was opened in full/);
+
+  const receiptFile = fs.readdirSync(path.join(root, '.agenctx', 'sessions'))[0];
+  const receipt = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'sessions', receiptFile), 'utf8'));
+  assert.ok(receipt.served.flatMap(event => event.entries || []).every(entry => entry.mode === 'preview'));
+});
+
+test('local UI serves secured repository data and rejects stale writes', async () => {
+  const root = tempProject({ name: 'ui-test', description: 'Local control plane' });
+  assert.equal(run(root, 'init').status, 0);
+  assert.equal(run(root, 'add', 'warning', 'Never expose provider credentials').status, 0);
+
+  const token = 'test-ui-token';
+  const { server } = createUIServer(root, { token });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const port = server.address().port;
+
+  try {
+    const page = await uiRequest(port, '/');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /<h1 id="page-title">Context<\/h1>/);
+    assert.match(page.headers['content-security-policy'], /default-src 'self'/);
+
+    const unauthorized = await uiRequest(port, '/api/snapshot');
+    assert.equal(unauthorized.status, 401);
+
+    const loaded = await uiRequest(port, '/api/snapshot', { token });
+    assert.equal(loaded.status, 200);
+    assert.equal(loaded.json.project.name, 'ui-test');
+    assert.equal(loaded.json.counts.active, 1);
+    assert.equal(loaded.json.forecast.buckets.length, 4);
+
+    const write = {
+      banner: 'rules',
+      content: 'Keep provider adapters replaceable',
+      stateRevision: loaded.json.revisions.state,
+    };
+    const added = await uiRequest(port, '/api/entries', { method: 'POST', token, body: write });
+    assert.equal(added.status, 200);
+    assert.match(added.json.result.id, /^[0-9a-f]{6}$/);
+
+    const stale = await uiRequest(port, '/api/entries', { method: 'POST', token, body: write });
+    assert.equal(stale.status, 409);
+    assert.match(stale.json.error, /changed outside this browser/);
+
+    const refreshed = await uiRequest(port, '/api/snapshot', { token });
+    assert.equal(refreshed.json.counts.active, 2);
+
+    const settings = await uiRequest(port, '/api/settings', {
+      method: 'PUT',
+      token,
+      body: {
+        project: 'ui-test',
+        description: 'Updated through the local UI',
+        decay: {
+          activeToAmbientDays: 45,
+          readExtensionDays: 4,
+          maxReadExtensionDays: 75,
+          ambientToArchivedDays: 90,
+        },
+        configRevision: refreshed.json.revisions.config,
+        stateRevision: refreshed.json.revisions.state,
+      },
+    });
+    assert.equal(settings.status, 200);
+    const finalSnapshot = await uiRequest(port, '/api/snapshot', { token });
+    assert.equal(finalSnapshot.json.config.decay.activeToAmbientDays, 45);
+    assert.equal(finalSnapshot.json.project.description, 'Updated through the local UI');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
   }
 });
 
@@ -469,6 +712,7 @@ test('agent sessions seal ordered served context in hash-chained receipts', () =
   assert.equal(run(root, 'view', id).status, 0);
   const ended = run(root, '--agent', 'end');
   assert.equal(ended.status, 0, ended.stderr);
+  assert.doesNotMatch(ended.stdout, /PREVIEWS ONLY/);
 
   const sessionsDir = path.join(root, '.agenctx', 'sessions');
   const receiptFiles = fs.readdirSync(sessionsDir);
@@ -513,6 +757,111 @@ test('agent sessions seal ordered served context in hash-chained receipts', () =
     .map(file => JSON.parse(fs.readFileSync(path.join(sessionsDir, file), 'utf8')));
   const second = receipts.find(item => item.hash !== receipt.hash);
   assert.equal(second.parent, receipt.hash);
+});
+
+test('concurrent agents keep isolated active sessions and receipts', () => {
+  const root = tempProject({ name: 'concurrent-test' });
+  assert.equal(run(root, 'init').status, 0);
+  assert.match(fs.readFileSync(path.join(root, '.agenctx', '.gitignore'), 'utf8'), /^runtime\/\nsession\.json\n$/);
+  assert.equal(run(root, 'add', 'warning', 'Warning for agent A').status, 0);
+  assert.equal(run(root, 'add', 'decision', 'Decision for agent B').status, 0);
+  assert.equal(run(root, 'add', 'testing', 'Testing for remaining agent').status, 0);
+
+  const startedA = run(root, '--agent', 'start', 'Agent A task');
+  assert.equal(startedA.status, 0, startedA.stderr);
+  const sessionA = startedA.stdout.match(/(s-[0-9a-f]{6})/)?.[1];
+  assert.ok(sessionA, startedA.stdout);
+
+  const startedB = run(root, '--agent', 'start', 'Agent B task');
+  assert.equal(startedB.status, 0, startedB.stderr);
+  const sessionB = startedB.stdout.match(/(s-[0-9a-f]{6})/)?.[1];
+  assert.ok(sessionB, startedB.stdout);
+  assert.notEqual(sessionA, sessionB);
+
+  const runtimeDir = path.join(root, '.agenctx', 'runtime', 'sessions');
+  assert.deepEqual(fs.readdirSync(runtimeDir).sort(), [`${sessionA}.json`, `${sessionB}.json`].sort());
+
+  const ambiguous = run(root, 'view');
+  assert.equal(ambiguous.status, 1);
+  assert.match(ambiguous.stderr, /2 sessions are active/);
+  assert.match(ambiguous.stderr, /--session=<id>/);
+
+  const servedA = run(root, 'view', 'warnings', `--session=${sessionA}`);
+  assert.equal(servedA.status, 0, servedA.stderr);
+  const servedB = run(root, '--session', sessionB, 'view', 'decisions');
+  assert.equal(servedB.status, 0, servedB.stderr);
+
+  const proposedA = run(
+    root,
+    'propose',
+    'note',
+    'Agent A discovered durable context',
+    `--session=${sessionA}`,
+  );
+  assert.equal(proposedA.status, 0, proposedA.stderr);
+  const proposalData = JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'proposals.json'), 'utf8'));
+  assert.equal(proposalData.proposals[0].session_id, sessionA);
+
+  const liveList = run(root, 'session', 'list');
+  assert.equal(liveList.status, 0, liveList.stderr);
+  assert.match(liveList.stdout, new RegExp(sessionA));
+  assert.match(liveList.stdout, new RegExp(sessionB));
+
+  const endedB = run(root, '--agent', 'end', `--session=${sessionB}`);
+  assert.equal(endedB.status, 0, endedB.stderr);
+  assert.equal(fs.existsSync(path.join(runtimeDir, `${sessionB}.json`)), false);
+  assert.equal(fs.existsSync(path.join(runtimeDir, `${sessionA}.json`)), true);
+
+  const remaining = run(root, 'view', 'testing');
+  assert.equal(remaining.status, 0, remaining.stderr);
+  const endedA = run(root, '--agent', 'end');
+  assert.equal(endedA.status, 0, endedA.stderr);
+  assert.deepEqual(fs.readdirSync(runtimeDir), []);
+
+  const receipts = fs.readdirSync(path.join(root, '.agenctx', 'sessions'))
+    .map(file => JSON.parse(fs.readFileSync(path.join(root, '.agenctx', 'sessions', file), 'utf8')));
+  const receiptA = receipts.find(item => item.id === sessionA);
+  const receiptB = receipts.find(item => item.id === sessionB);
+  assert.deepEqual(receiptA.served.map(event => event.command), ['view warnings', 'view testing']);
+  assert.deepEqual(receiptB.served.map(event => event.command), ['view decisions']);
+});
+
+test('legacy active session files migrate into ignored runtime storage', () => {
+  const root = tempProject();
+  assert.equal(run(root, 'init').status, 0);
+  const legacy = {
+    id: 's-abc123',
+    actor: 'agent',
+    description: 'Legacy active task',
+    started: new Date().toISOString(),
+    served: [],
+  };
+  const legacyPath = path.join(root, '.agenctx', 'session.json');
+  fs.writeFileSync(legacyPath, JSON.stringify(legacy, null, 2), 'utf8');
+
+  const listed = run(root, 'session', 'list');
+  assert.equal(listed.status, 0, listed.stderr);
+  assert.match(listed.stdout, /s-abc123/);
+  assert.equal(fs.existsSync(legacyPath), false);
+  assert.equal(
+    fs.existsSync(path.join(root, '.agenctx', 'runtime', 'sessions', 's-abc123.json')),
+    true,
+  );
+
+  const ended = run(root, 'session', 'end', 's-abc123');
+  assert.equal(ended.status, 0, ended.stderr);
+  assert.match(ended.stdout, /RECEIPT SEALED/);
+
+  const started = run(root, '--agent', 'start', 'Abandoned task');
+  const abandonedId = started.stdout.match(/(s-[0-9a-f]{6})/)?.[1];
+  assert.ok(abandonedId, started.stdout);
+  const abandoned = run(root, 'session', 'abandon', abandonedId);
+  assert.equal(abandoned.status, 0, abandoned.stderr);
+  assert.match(abandoned.stdout, /No receipt was sealed/);
+  assert.equal(
+    fs.existsSync(path.join(root, '.agenctx', 'runtime', 'sessions', `${abandonedId}.json`)),
+    false,
+  );
 });
 
 test('sync removes stale generated context and saves stack-only changes', () => {
