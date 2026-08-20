@@ -313,6 +313,13 @@ npm pack --dry-run
 
 The project deliberately uses no runtime dependencies or build step.
 
+## Community
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a substantial change.
+- Report vulnerabilities privately using [SECURITY.md](SECURITY.md).
+- Community participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Current milestones and contribution opportunities are tracked in [ROADMAP.md](ROADMAP.md).
+
 ## Project history
 
 Originally built on March 12, 2026. The [first scaffold commit](https://github.com/YMuskrat/agentctx/commit/1668fe6b0eb4d2c9a8de785e954e17ef4faa1b7c) and tagged [original prototype snapshot](https://github.com/YMuskrat/agentctx/tree/prototype-2026-03-12) are preserved; public-release work resumed five months later on August 13, 2026.

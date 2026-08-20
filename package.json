@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "check": "node --check bin/agenctx.js && node --check lib/ui/server.js && node --check lib/ui/public/app.js",
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm run check && npm test"
   },
   "engines": {
     "node": ">=18"
