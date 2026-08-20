@@ -12,21 +12,7 @@ Unlike a growing prompt or a long `AGENTS.md`, the context remains structured, s
 
 ## What agenctx does
 
-```text
-Human-maintained context --> .agenctx/ committed with the repository
-                                  |
-                    +-------------+-------------+
-                    |             |             |
-                    v             v             v
-              view and search   lifecycle    session receipts
-                    |             |             |
-                    v             v             v
-               coding agent   active -->      exact context
-                              ambient -->      served, in order
-                              archived
-
-Agent discoveries --> proposal queue --> human review --> trusted context
-```
+![Agenctx context system showing human-managed repository context, agent access, lifecycle states, session receipts, and human-reviewed proposals](./assets/agenctx-context-system.jpg)
 
 - **Store project knowledge:** Rules, decisions, warnings, testing requirements, environment notes, and custom context types live in `.agenctx/` and can be reviewed through Git.
 - **Serve context on demand:** Generated agent guides teach Codex, Claude, and Cursor how to discover previews and retrieve the complete entry before acting on it.
